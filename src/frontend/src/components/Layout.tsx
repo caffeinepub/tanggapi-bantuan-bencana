@@ -50,10 +50,10 @@ export default function Layout() {
               </div>
               <div className="flex flex-col">
                 <span className="font-display text-white font-bold text-lg leading-none tracking-tight">
-                  TANGGAPI
+                  RELAWAN TIK INDONESIA
                 </span>
                 <span className="text-white/60 text-[10px] leading-none tracking-wider uppercase">
-                  Responsif &amp; Partisipatif
+                  SISTEM INFORMASI RTIK INDONESIA PEDULI
                 </span>
               </div>
             </Link>
@@ -81,19 +81,17 @@ export default function Layout() {
                 );
               })}
 
-              {isAdmin && (
-                <Link
-                  to="/admin"
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                    currentPath.startsWith("/admin")
-                      ? "bg-gold/30 text-gold"
-                      : "text-white/75 hover:text-white hover:bg-white/10"
-                  }`}
-                >
-                  <Shield className="w-4 h-4" />
-                  Admin
-                </Link>
-              )}
+              <Link
+                to="/admin"
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  currentPath.startsWith("/admin")
+                    ? "bg-gold/30 text-gold"
+                    : "text-white/75 hover:text-white hover:bg-white/10"
+                }`}
+              >
+                <Shield className="w-4 h-4" />
+                Admin
+              </Link>
             </nav>
 
             {/* Auth + Mobile Toggle */}
@@ -177,16 +175,18 @@ export default function Layout() {
                   );
                 })}
 
-                {isAdmin && (
-                  <Link
-                    to="/admin"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-md text-sm font-medium text-white/75 hover:text-white hover:bg-white/10"
-                  >
-                    <Shield className="w-4 h-4" />
-                    Admin Panel
-                  </Link>
-                )}
+                <Link
+                  to="/admin"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-md text-sm font-medium transition-all ${
+                    currentPath.startsWith("/admin")
+                      ? "bg-white/20 text-white"
+                      : "text-white/75 hover:text-white hover:bg-white/10"
+                  }`}
+                >
+                  <Shield className="w-4 h-4" />
+                  Admin Panel
+                </Link>
 
                 <div className="border-t border-white/10 pt-2 mt-1">
                   {identity ? (
@@ -242,17 +242,17 @@ export default function Layout() {
                 </div>
                 <div>
                   <p className="font-display font-bold text-lg leading-none">
-                    TANGGAPI
+                    RELAWAN TIK INDONESIA
                   </p>
                   <p className="text-white/50 text-xs">
-                    Responsif &amp; Partisipatif
+                    SISTEM INFORMASI RTIK INDONESIA PEDULI
                   </p>
                 </div>
               </div>
               <p className="text-white/60 text-sm leading-relaxed">
-                Sistem Informasi Data Penerima Bantuan Bencana Provinsi Aceh.
-                Transparansi dan akuntabilitas dalam pengelolaan bantuan
-                bencana.
+                Sistem Informasi RTIK Indonesia Peduli untuk data penerima
+                bantuan bencana. Transparansi dan akuntabilitas dalam
+                pengelolaan bantuan bencana.
               </p>
             </div>
 
@@ -288,7 +288,7 @@ export default function Layout() {
 
           <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row items-center justify-between gap-3">
             <p className="text-white/50 text-sm">
-              © {new Date().getFullYear()} Pemerintah Provinsi Aceh. Hak Cipta
+              © {new Date().getFullYear()} Relawan TIK Indonesia. Hak Cipta
               Dilindungi.
             </p>
             <a

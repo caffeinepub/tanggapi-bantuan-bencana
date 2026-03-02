@@ -5,8 +5,10 @@ import Text "mo:core/Text";
 import Nat "mo:core/Nat";
 import Time "mo:core/Time";
 
+
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
+
 
 actor {
   // Types
@@ -51,6 +53,7 @@ actor {
   // State
   let accessControlState = AccessControl.initState();
 
+  // Persistent data structures
   let aidRecipients = Map.empty<Nat, AidRecipient>();
   let reports = Map.empty<Nat, Report>();
   let publications = Map.empty<Nat, Publication>();

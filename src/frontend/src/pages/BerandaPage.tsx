@@ -136,15 +136,15 @@ export default function BerandaPage() {
           >
             <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 text-white/80 text-sm mb-6">
               <AlertTriangle className="w-3.5 h-3.5 text-gold" />
-              Sistem Informasi Resmi Provinsi Aceh
+              Relawan TIK Indonesia
             </div>
             <h1 className="font-display text-4xl md:text-5xl font-bold text-white leading-tight mb-4">
-              Sistem Informasi
-              <span className="block text-gold">Bantuan Bencana Aceh</span>
+              SISTEM INFORMASI
+              <span className="block text-gold">RTIK INDONESIA PEDULI</span>
             </h1>
             <p className="text-white/70 text-lg leading-relaxed mb-8 max-w-2xl">
               Platform transparan untuk memantau dan mengelola data penerima
-              bantuan bencana di seluruh wilayah Provinsi Aceh. Data real-time,
+              bantuan bencana oleh Relawan TIK Indonesia. Data real-time,
               akurat, dan dapat dipertanggungjawabkan.
             </p>
             <div className="flex flex-wrap gap-3">

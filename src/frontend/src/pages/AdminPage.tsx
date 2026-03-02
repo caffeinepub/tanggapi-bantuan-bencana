@@ -61,6 +61,7 @@ import {
 import {
   useAddAidRecipient,
   useAddPublication,
+  useAddReport,
   useDeleteAidRecipient,
   useDeletePublication,
   useGetAllAidRecipients,
@@ -101,6 +102,15 @@ const EMPTY_PUBLICATION: Omit<Publication, "id"> = {
   publishDate: BigInt(Date.now()),
   readTime: BigInt(5),
   tags: [],
+};
+
+const EMPTY_REPORT: Omit<Report, "id"> = {
+  title: "",
+  description: "",
+  topic: "",
+  reporterName: "",
+  reportDate: BigInt(Date.now()),
+  status: "baru",
 };
 
 // ─── Aid Recipients Tab ───────────────────────────────────────────────────────
@@ -462,92 +472,363 @@ function AidRecipientsTab() {
 // ─── Reports Tab ──────────────────────────────────────────────────────────────
 
 function ReportsTab() {
+  const [search, setSearch] = useState("");
+  const [editingReport, setEditingReport] = useState<Report | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<bigint | null>(null);
+  const [form, setForm] = useState<Omit<Report, "id">>(EMPTY_REPORT);
+  const [editStatus, setEditStatus] = useState("baru");
+
   const { data: reports, isLoading } = useGetAllReports();
+  const addReport = useAddReport();
   const updateStatus = useUpdateReportStatus();
 
-  const handleStatusChange = async (id: bigint, status: string) => {
+  const filtered = useMemo(() => {
+    const active = (reports ?? []).filter((r) => r.status !== "dihapus");
+    if (!search.trim()) return active;
+    const term = search.toLowerCase();
+    return active.filter(
+      (r) =>
+        r.title.toLowerCase().includes(term) ||
+        r.reporterName.toLowerCase().includes(term) ||
+        r.topic.toLowerCase().includes(term),
+    );
+  }, [reports, search]);
+
+  const openAdd = () => {
+    setEditingReport(null);
+    setForm({ ...EMPTY_REPORT, reportDate: BigInt(Date.now()) });
+    setIsFormOpen(true);
+  };
+
+  const openEditStatus = (r: Report) => {
+    setEditingReport(r);
+    setEditStatus(r.status);
+    setIsStatusDialogOpen(true);
+  };
+
+  const handleSubmitAdd = async () => {
+    if (!form.title || !form.reporterName || !form.topic) {
+      toast.error("Judul, Pelapor, dan Topik wajib diisi");
+      return;
+    }
     try {
-      await updateStatus.mutateAsync({ id, status });
+      await addReport.mutateAsync({ ...form, id: newBigIntId() });
+      toast.success("Pengaduan berhasil ditambahkan");
+      setIsFormOpen(false);
+    } catch {
+      toast.error("Gagal menambahkan pengaduan");
+    }
+  };
+
+  const handleSaveStatus = async () => {
+    if (!editingReport) return;
+    try {
+      await updateStatus.mutateAsync({
+        id: editingReport.id,
+        status: editStatus,
+      });
       toast.success("Status pengaduan diperbarui");
+      setIsStatusDialogOpen(false);
     } catch {
       toast.error("Gagal memperbarui status");
     }
   };
 
+  const handleDelete = async () => {
+    if (!deletingId) return;
+    try {
+      await updateStatus.mutateAsync({ id: deletingId, status: "dihapus" });
+      toast.success("Pengaduan dihapus");
+    } catch {
+      toast.error("Gagal menghapus pengaduan");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
-    <div className="bg-white rounded-xl border border-border overflow-hidden shadow-card">
-      <Table>
-        <TableHeader>
-          <TableRow className="bg-secondary/50">
-            <TableHead>Judul</TableHead>
-            <TableHead className="hidden md:table-cell">Topik</TableHead>
-            <TableHead className="hidden lg:table-cell">Pelapor</TableHead>
-            <TableHead className="hidden lg:table-cell">Tanggal</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Ubah Status</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {isLoading
-            ? ["a", "b", "c", "d"].map((rowKey) => (
-                <TableRow key={rowKey}>
-                  {["1", "2", "3", "4", "5", "6"].map((colKey) => (
-                    <TableCell key={colKey}>
-                      <Skeleton className="h-5 w-full" />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            : (reports ?? []).map((r) => (
-                <TableRow key={String(r.id)} className="hover:bg-secondary/20">
-                  <TableCell>
-                    <p className="font-medium text-sm line-clamp-1">
-                      {r.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground line-clamp-1 md:hidden">
-                      {r.topic}
-                    </p>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    <span className="capitalize text-sm">{r.topic}</span>
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell text-sm">
-                    {r.reporterName}
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
-                    {formatDateId(r.reportDate)}
-                  </TableCell>
-                  <TableCell>
-                    <ReportStatusBadge status={r.status} />
-                  </TableCell>
-                  <TableCell>
-                    <Select
-                      value={r.status}
-                      onValueChange={(v) => handleStatusChange(r.id, v)}
-                    >
-                      <SelectTrigger className="h-8 text-xs w-36 ml-auto">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="baru">Baru</SelectItem>
-                        <SelectItem value="ditindaklanjuti">
-                          Ditindaklanjuti
-                        </SelectItem>
-                        <SelectItem value="selesai">Selesai</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                </TableRow>
-              ))}
-        </TableBody>
-      </Table>
-      {(reports ?? []).length === 0 && !isLoading && (
-        <div className="text-center py-10 text-muted-foreground text-sm">
-          <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-20" />
-          Tidak ada pengaduan
+    <>
+      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Cari judul, pelapor, topik..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
         </div>
-      )}
-    </div>
+        <Button onClick={openAdd} className="bg-primary text-white gap-2">
+          <Plus className="w-4 h-4" />
+          Tambah
+        </Button>
+      </div>
+
+      <div className="bg-white rounded-xl border border-border overflow-hidden shadow-card">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-secondary/50">
+              <TableHead>Judul</TableHead>
+              <TableHead className="hidden md:table-cell">Topik</TableHead>
+              <TableHead className="hidden lg:table-cell">Pelapor</TableHead>
+              <TableHead className="hidden lg:table-cell">Tanggal</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Aksi</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading
+              ? ["a", "b", "c", "d"].map((rowKey) => (
+                  <TableRow key={rowKey}>
+                    {["1", "2", "3", "4", "5", "6"].map((colKey) => (
+                      <TableCell key={colKey}>
+                        <Skeleton className="h-5 w-full" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              : filtered.map((r) => (
+                  <TableRow
+                    key={String(r.id)}
+                    className="hover:bg-secondary/20"
+                  >
+                    <TableCell>
+                      <p className="font-medium text-sm line-clamp-1">
+                        {r.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground line-clamp-1 md:hidden">
+                        {r.topic}
+                      </p>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <span className="capitalize text-sm">{r.topic}</span>
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell text-sm">
+                      {r.reporterName}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
+                      {formatDateId(r.reportDate)}
+                    </TableCell>
+                    <TableCell>
+                      <ReportStatusBadge status={r.status} />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => openEditStatus(r)}
+                          title="Ubah Status"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => setDeletingId(r.id)}
+                          title="Hapus"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+          </TableBody>
+        </Table>
+        {filtered.length === 0 && !isLoading && (
+          <div className="text-center py-10 text-muted-foreground text-sm">
+            <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-20" />
+            Tidak ada pengaduan
+          </div>
+        )}
+      </div>
+
+      {/* Tambah Pengaduan Dialog */}
+      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-display">
+              Tambah Pengaduan Baru
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label>Judul Pengaduan *</Label>
+              <Input
+                value={form.title}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, title: e.target.value }))
+                }
+                placeholder="Judul pengaduan"
+                className="mt-1.5"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Nama Pelapor *</Label>
+                <Input
+                  value={form.reporterName}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, reporterName: e.target.value }))
+                  }
+                  placeholder="Nama lengkap"
+                  className="mt-1.5"
+                />
+              </div>
+              <div>
+                <Label>Topik *</Label>
+                <Select
+                  value={form.topic}
+                  onValueChange={(v) => setForm((f) => ({ ...f, topic: v }))}
+                >
+                  <SelectTrigger className="mt-1.5">
+                    <SelectValue placeholder="Pilih topik" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bencana">Bencana</SelectItem>
+                    <SelectItem value="bantuan">Bantuan</SelectItem>
+                    <SelectItem value="pengungsian">Pengungsian</SelectItem>
+                    <SelectItem value="infrastruktur">Infrastruktur</SelectItem>
+                    <SelectItem value="kesehatan">Kesehatan</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Label>Deskripsi</Label>
+              <Textarea
+                value={form.description}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, description: e.target.value }))
+                }
+                placeholder="Detail pengaduan..."
+                rows={4}
+                className="mt-1.5 resize-none"
+              />
+            </div>
+            <div>
+              <Label>Status</Label>
+              <Select
+                value={form.status}
+                onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}
+              >
+                <SelectTrigger className="mt-1.5">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="baru">Baru</SelectItem>
+                  <SelectItem value="ditindaklanjuti">
+                    Ditindaklanjuti
+                  </SelectItem>
+                  <SelectItem value="selesai">Selesai</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setIsFormOpen(false)}>
+              Batal
+            </Button>
+            <Button
+              onClick={handleSubmitAdd}
+              disabled={addReport.isPending}
+              className="bg-primary text-white gap-2"
+            >
+              {addReport.isPending && (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              )}
+              Tambah
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Ubah Status Dialog */}
+      <Dialog open={isStatusDialogOpen} onOpenChange={setIsStatusDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-display">
+              Ubah Status Pengaduan
+            </DialogTitle>
+          </DialogHeader>
+          {editingReport && (
+            <div className="space-y-4 py-2">
+              <div>
+                <p className="text-sm font-medium text-foreground line-clamp-2">
+                  {editingReport.title}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Pelapor: {editingReport.reporterName}
+                </p>
+              </div>
+              <div>
+                <Label>Status Pengaduan</Label>
+                <Select value={editStatus} onValueChange={setEditStatus}>
+                  <SelectTrigger className="mt-1.5">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="baru">Baru</SelectItem>
+                    <SelectItem value="ditindaklanjuti">
+                      Ditindaklanjuti
+                    </SelectItem>
+                    <SelectItem value="selesai">Selesai</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsStatusDialogOpen(false)}
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleSaveStatus}
+              disabled={updateStatus.isPending}
+              className="bg-primary text-white gap-2"
+            >
+              {updateStatus.isPending && (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              )}
+              Simpan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirm */}
+      <AlertDialog open={!!deletingId} onOpenChange={() => setDeletingId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Pengaduan?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Pengaduan ini akan dihapus dari daftar. Tindakan ini tidak dapat
+              dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {updateStatus.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : null}
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
