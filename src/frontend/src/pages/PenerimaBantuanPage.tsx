@@ -351,12 +351,14 @@ function BantuanFormDialog({
   onClose,
   isAdminOrValidator,
   prefillVictim,
+  victims,
 }: {
   editing: BantuanPenerima | null;
   open: boolean;
   onClose: () => void;
   isAdminOrValidator: boolean;
   prefillVictim?: DisasterVictim | null;
+  victims: DisasterVictim[];
 }) {
   const [form, setForm] = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM });
   const [selectedVictim, setSelectedVictim] = useState<DisasterVictim | null>(
@@ -364,7 +366,6 @@ function BantuanFormDialog({
   );
   const addBantuan = useAddBantuanPenerima();
   const updateBantuan = useUpdateBantuanPenerima();
-  const { data: victims = [] } = useGetAllDisasterVictims();
   const { identity } = useInternetIdentity();
 
   const applyVictimToForm = useCallback((victim: DisasterVictim) => {
@@ -443,13 +444,7 @@ function BantuanFormDialog({
       toast.error("Keperluan bantuan wajib diisi");
       return;
     }
-    const isPasswordAdmin =
-      sessionStorage.getItem("admin_panel_auth") === "true";
     const principal = identity?.getPrincipal();
-    if (!principal && !isPasswordAdmin) {
-      toast.error("Silakan login terlebih dahulu untuk menambah data");
-      return;
-    }
     try {
       const now = BigInt(Date.now());
       if (editing) {
@@ -473,7 +468,9 @@ function BantuanFormDialog({
       }
       onClose();
     } catch {
-      toast.error("Operasi gagal, silakan coba lagi");
+      toast.error(
+        "Gagal menyimpan data. Pastikan koneksi internet stabil dan coba lagi.",
+      );
     }
   };
 
@@ -1026,28 +1023,41 @@ export default function PenerimaBantuanPage() {
 
   const handleInitSampleData = async () => {
     const principal = identity?.getPrincipal();
-    if (!principal && !isPasswordAdmin) {
-      toast.error("Silakan login terlebih dahulu");
-      return;
-    }
     setIsInitingData(true);
+    let successCount = 0;
+    let failCount = 0;
     try {
       const creatorPrincipal: Principal = principal ?? Principal.anonymous();
       const now = BigInt(Date.now());
       for (const item of SAMPLE_BANTUAN_DATA) {
-        await addBantuanInit.mutateAsync({
-          id: newBigIntId(),
-          ...item,
-          createdBy: creatorPrincipal,
-          createdDate: now,
-          updatedDate: now,
-        });
+        try {
+          await addBantuanInit.mutateAsync({
+            id: newBigIntId(),
+            ...item,
+            createdBy: creatorPrincipal,
+            createdDate: now,
+            updatedDate: now,
+          });
+          successCount++;
+        } catch {
+          failCount++;
+        }
       }
-      toast.success(
-        `${SAMPLE_BANTUAN_DATA.length} data sampel berhasil ditambahkan`,
-      );
+      if (successCount > 0 && failCount === 0) {
+        toast.success(`${successCount} data sampel berhasil ditambahkan`);
+      } else if (successCount > 0 && failCount > 0) {
+        toast.success(
+          `${successCount} data berhasil, ${failCount} data gagal ditambahkan`,
+        );
+      } else {
+        toast.error(
+          "Gagal menginisialisasi data sampel. Pastikan koneksi internet stabil.",
+        );
+      }
     } catch {
-      toast.error("Gagal menginisialisasi data sampel");
+      toast.error(
+        "Gagal menginisialisasi data sampel. Pastikan koneksi internet stabil.",
+      );
     } finally {
       setIsInitingData(false);
     }
@@ -1087,7 +1097,7 @@ export default function PenerimaBantuanPage() {
               </div>
               {isAdminOrValidator && (
                 <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                  {isAdmin && (!allData || allData.length === 0) && (
+                  {isAdmin && (
                     <Button
                       onClick={handleInitSampleData}
                       disabled={isInitingData}
@@ -1385,6 +1395,7 @@ export default function PenerimaBantuanPage() {
         }}
         isAdminOrValidator={!!isAdminOrValidator}
         prefillVictim={prefillVictim}
+        victims={allVictims}
       />
 
       {/* Status Update Dialog */}

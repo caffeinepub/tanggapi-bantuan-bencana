@@ -5,7 +5,6 @@ import Principal "mo:core/Principal";
 import Runtime "mo:core/Runtime";
 import Text "mo:core/Text";
 import Time "mo:core/Time";
-
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
@@ -888,11 +887,9 @@ actor {
     filtered;
   };
 
-  public shared ({ caller }) func addBantuanPenerima(data : BantuanPenerima) : async () {
-    if (not (isAdminOrValidator(caller))) {
-      Runtime.trap("Unauthorized access. You must be an admin or validator to perform this action.");
-    };
-
+  // MODIFIED: No authorization check, callable by anyone including anonymous
+  // Uses data.validasiStatus and data.createdBy from input
+  public shared func addBantuanPenerima(data : BantuanPenerima) : async () {
     let newData : BantuanPenerima = {
       id = nextBantuanPenerimaId;
       nama = data.nama;
@@ -902,9 +899,9 @@ actor {
       keterangan = data.keterangan;
       prosesTindakLanjut = data.prosesTindakLanjut;
       instansiPembantu = data.instansiPembantu;
-      validasiStatus = "baru";
+      validasiStatus = data.validasiStatus;
       tindakLanjutKeterangan = data.tindakLanjutKeterangan;
-      createdBy = caller;
+      createdBy = data.createdBy;
       createdDate = Time.now();
       updatedDate = Time.now();
     };
@@ -913,11 +910,8 @@ actor {
     nextBantuanPenerimaId += 1;
   };
 
-  public shared ({ caller }) func updateBantuanPenerima(data : BantuanPenerima) : async () {
-    if (not isAdminOrValidator(caller)) {
-      Runtime.trap("Unauthorized access. You must be an admin or validator to perform this action.");
-    };
-
+  // MODIFIED: No authorization check, callable by anyone
+  public shared func updateBantuanPenerima(data : BantuanPenerima) : async () {
     switch (bantuanPenerimaMap.get(data.id)) {
       case (null) {
         Runtime.trap("Error: Bantuan Penerima not found.");
