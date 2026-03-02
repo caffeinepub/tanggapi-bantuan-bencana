@@ -16,7 +16,7 @@ import {
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
-import { useIsCallerAdmin } from "../hooks/useQueries";
+import { useGetFooterLinks, useIsCallerAdmin } from "../hooks/useQueries";
 
 const navItems = [
   { label: "Beranda", path: "/", icon: Home },
@@ -28,10 +28,15 @@ const navItems = [
 export default function Layout() {
   const { login, clear, loginStatus, identity } = useInternetIdentity();
   const { data: isAdmin } = useIsCallerAdmin();
+  const { data: footerLinks } = useGetFooterLinks();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const router = useRouter();
   const currentPath = router.state.location.pathname;
   const isLoggingIn = loginStatus === "logging-in";
+
+  const sortedFooterLinks = footerLinks
+    ? [...footerLinks].sort((a, b) => Number(a.order) - Number(b.order))
+    : [];
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -279,9 +284,26 @@ export default function Layout() {
                 Informasi
               </h4>
               <ul className="space-y-1.5 text-sm text-white/60">
-                <li>Pemerintah Provinsi Aceh</li>
-                <li>Badan Penanggulangan Bencana Daerah</li>
-                <li>Banda Aceh, Aceh, Indonesia</li>
+                {sortedFooterLinks.length > 0 ? (
+                  sortedFooterLinks.map((link) => (
+                    <li key={String(link.id)}>
+                      <a
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-white transition-colors"
+                      >
+                        {link.linkLabel}
+                      </a>
+                    </li>
+                  ))
+                ) : (
+                  <>
+                    <li>Pemerintah Provinsi Aceh</li>
+                    <li>Badan Penanggulangan Bencana Daerah</li>
+                    <li>Banda Aceh, Aceh, Indonesia</li>
+                  </>
+                )}
               </ul>
             </div>
           </div>

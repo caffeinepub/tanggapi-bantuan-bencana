@@ -41,6 +41,12 @@ export interface Report {
 export interface UserProfile {
     name: string;
 }
+export interface FooterLink {
+    id: bigint;
+    url: string;
+    linkLabel: string;
+    order: bigint;
+}
 export enum UserRole {
     admin = "admin",
     user = "user",
@@ -48,10 +54,12 @@ export enum UserRole {
 }
 export interface backendInterface {
     addAidRecipient(aid: AidRecipient): Promise<bigint>;
+    addFooterLink(link: FooterLink): Promise<bigint>;
     addPublication(publication: Publication): Promise<bigint>;
     addReport(report: Report): Promise<bigint>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     deleteAidRecipient(id: bigint): Promise<boolean>;
+    deleteFooterLink(id: bigint): Promise<boolean>;
     deletePublication(id: bigint): Promise<boolean>;
     filterAidRecipientsByDistrict(district: string): Promise<Array<AidRecipient>>;
     filterAidRecipientsByStatus(status: string): Promise<Array<AidRecipient>>;
@@ -64,6 +72,7 @@ export interface backendInterface {
     getAllReports(): Promise<Array<Report>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
+    getFooterLinks(): Promise<Array<FooterLink>>;
     getPublicationById(id: bigint): Promise<Publication | null>;
     getRecipientsByAidType(): Promise<Array<[string, bigint]>>;
     getRecipientsByDistrict(): Promise<Array<[string, bigint]>>;
@@ -78,6 +87,7 @@ export interface backendInterface {
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     searchAidRecipients(searchTerm: string): Promise<Array<AidRecipient>>;
     updateAidRecipient(aid: AidRecipient): Promise<boolean>;
+    updateFooterLink(link: FooterLink): Promise<boolean>;
     updatePublication(publication: Publication): Promise<boolean>;
     updateReportStatus(id: bigint, status: string): Promise<boolean>;
 }

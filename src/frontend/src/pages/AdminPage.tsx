@@ -38,6 +38,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
   BookOpen,
+  Link as LinkIcon,
   Loader2,
   Lock,
   MessageSquare,
@@ -52,7 +53,12 @@ import {
 import { motion } from "motion/react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import type { AidRecipient, Publication, Report } from "../backend.d";
+import type {
+  AidRecipient,
+  FooterLink,
+  Publication,
+  Report,
+} from "../backend.d";
 import {
   AidTypeBadge,
   DistributionStatusBadge,
@@ -60,16 +66,20 @@ import {
 } from "../components/StatusBadge";
 import {
   useAddAidRecipient,
+  useAddFooterLink,
   useAddPublication,
   useAddReport,
   useDeleteAidRecipient,
+  useDeleteFooterLink,
   useDeletePublication,
   useGetAllAidRecipients,
   useGetAllPublications,
   useGetAllReports,
+  useGetFooterLinks,
   useInitializeSampleData,
   useIsCallerAdmin,
   useUpdateAidRecipient,
+  useUpdateFooterLink,
   useUpdatePublication,
   useUpdateReportStatus,
 } from "../hooks/useQueries";
@@ -1126,6 +1136,252 @@ function PublicationsTab() {
   );
 }
 
+// ─── Links Tab ────────────────────────────────────────────────────────────────
+
+const EMPTY_FOOTER_LINK: Omit<FooterLink, "id"> = {
+  linkLabel: "",
+  url: "",
+  order: BigInt(1),
+};
+
+function LinksTab() {
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingLink, setEditingLink] = useState<FooterLink | null>(null);
+  const [deletingId, setDeletingId] = useState<bigint | null>(null);
+  const [form, setForm] = useState<Omit<FooterLink, "id">>(EMPTY_FOOTER_LINK);
+
+  const { data: footerLinks, isLoading } = useGetFooterLinks();
+  const addLink = useAddFooterLink();
+  const updateLink = useUpdateFooterLink();
+  const deleteLink = useDeleteFooterLink();
+
+  const sorted = [...(footerLinks ?? [])].sort(
+    (a, b) => Number(a.order) - Number(b.order),
+  );
+
+  const openAdd = () => {
+    setEditingLink(null);
+    setForm(EMPTY_FOOTER_LINK);
+    setIsFormOpen(true);
+  };
+
+  const openEdit = (link: FooterLink) => {
+    setEditingLink(link);
+    setForm({
+      linkLabel: link.linkLabel,
+      url: link.url,
+      order: link.order,
+    });
+    setIsFormOpen(true);
+  };
+
+  const handleSubmit = async () => {
+    if (!form.linkLabel || !form.url) {
+      toast.error("Label dan URL wajib diisi");
+      return;
+    }
+    try {
+      if (editingLink) {
+        await updateLink.mutateAsync({ ...form, id: editingLink.id });
+        toast.success("Link diperbarui");
+      } else {
+        await addLink.mutateAsync({ ...form, id: newBigIntId() });
+        toast.success("Link ditambahkan");
+      }
+      setIsFormOpen(false);
+    } catch {
+      toast.error("Operasi gagal");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deletingId) return;
+    try {
+      await deleteLink.mutateAsync(deletingId);
+      toast.success("Link dihapus");
+    } catch {
+      toast.error("Gagal menghapus link");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  return (
+    <>
+      <div className="flex justify-end mb-4">
+        <Button onClick={openAdd} className="bg-primary text-white gap-2">
+          <Plus className="w-4 h-4" />
+          Tambah Link
+        </Button>
+      </div>
+
+      <div className="bg-white rounded-xl border border-border overflow-hidden shadow-card">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-secondary/50">
+              <TableHead>No. Urut</TableHead>
+              <TableHead>Label</TableHead>
+              <TableHead className="hidden md:table-cell">URL</TableHead>
+              <TableHead className="text-right">Aksi</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading
+              ? ["a", "b", "c"].map((rowKey) => (
+                  <TableRow key={rowKey}>
+                    {["1", "2", "3", "4"].map((colKey) => (
+                      <TableCell key={colKey}>
+                        <Skeleton className="h-5 w-full" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              : sorted.map((link) => (
+                  <TableRow
+                    key={String(link.id)}
+                    className="hover:bg-secondary/20"
+                  >
+                    <TableCell className="text-sm font-medium">
+                      {Number(link.order)}
+                    </TableCell>
+                    <TableCell>
+                      <p className="font-medium text-sm">{link.linkLabel}</p>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <a
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-primary hover:underline truncate max-w-xs block"
+                      >
+                        {link.url}
+                      </a>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => openEdit(link)}
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => setDeletingId(link.id)}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+          </TableBody>
+        </Table>
+        {sorted.length === 0 && !isLoading && (
+          <div className="text-center py-10 text-muted-foreground text-sm">
+            <LinkIcon className="w-8 h-8 mx-auto mb-2 opacity-20" />
+            Belum ada link footer
+          </div>
+        )}
+      </div>
+
+      {/* Form Dialog */}
+      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display">
+              {editingLink ? "Edit Link Footer" : "Tambah Link Footer"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label>Label *</Label>
+              <Input
+                value={form.linkLabel}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, linkLabel: e.target.value }))
+                }
+                placeholder="Nama tampilan link"
+                className="mt-1.5"
+              />
+            </div>
+            <div>
+              <Label>URL *</Label>
+              <Input
+                value={form.url}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, url: e.target.value }))
+                }
+                placeholder="https://example.com"
+                className="mt-1.5"
+              />
+            </div>
+            <div>
+              <Label>Urutan</Label>
+              <Input
+                type="number"
+                min="1"
+                value={Number(form.order)}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    order: BigInt(e.target.value || "1"),
+                  }))
+                }
+                className="mt-1.5"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setIsFormOpen(false)}>
+              Batal
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={addLink.isPending || updateLink.isPending}
+              className="bg-primary text-white gap-2"
+            >
+              {(addLink.isPending || updateLink.isPending) && (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              )}
+              {editingLink ? "Perbarui" : "Tambah"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirm */}
+      <AlertDialog open={!!deletingId} onOpenChange={() => setDeletingId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Link?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Link ini akan dihapus dari footer. Tindakan ini tidak dapat
+              dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteLink.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : null}
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
 // ─── Admin Page ───────────────────────────────────────────────────────────────
 
 export default function AdminPage() {
@@ -1231,6 +1487,11 @@ export default function AdminPage() {
               <BookOpen className="w-4 h-4" />
               Publikasi
             </TabsTrigger>
+            <TabsTrigger value="links" className="gap-1.5">
+              <LinkIcon className="w-4 h-4" />
+              <span className="hidden sm:inline">Link Footer</span>
+              <span className="sm:hidden">Link</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="recipients">
@@ -1243,6 +1504,10 @@ export default function AdminPage() {
 
           <TabsContent value="publications">
             <PublicationsTab />
+          </TabsContent>
+
+          <TabsContent value="links">
+            <LinksTab />
           </TabsContent>
         </Tabs>
       </div>

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   AidRecipient,
+  FooterLink,
   Publication,
   Report,
   UserProfile,
@@ -310,6 +311,62 @@ export function useInitializeSampleData() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries();
+    },
+  });
+}
+
+// ─── Footer Links ─────────────────────────────────────────────────────────────
+
+export function useGetFooterLinks() {
+  const { actor, isFetching } = useActor();
+  return useQuery<FooterLink[]>({
+    queryKey: ["footerLinks"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getFooterLinks();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useAddFooterLink() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (link: FooterLink) => {
+      if (!actor) throw new Error("Actor not ready");
+      return actor.addFooterLink(link);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["footerLinks"] });
+    },
+  });
+}
+
+export function useUpdateFooterLink() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (link: FooterLink) => {
+      if (!actor) throw new Error("Actor not ready");
+      return actor.updateFooterLink(link);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["footerLinks"] });
+    },
+  });
+}
+
+export function useDeleteFooterLink() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("Actor not ready");
+      return actor.deleteFooterLink(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["footerLinks"] });
     },
   });
 }

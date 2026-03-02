@@ -4,12 +4,13 @@ import Runtime "mo:core/Runtime";
 import Text "mo:core/Text";
 import Nat "mo:core/Nat";
 import Time "mo:core/Time";
-
+import Iter "mo:core/Iter";
+import Migration "migration";
 
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
-
+(with migration = Migration.run)
 actor {
   // Types
   type AidRecipient = {
@@ -50,6 +51,13 @@ actor {
     name : Text;
   };
 
+  public type FooterLink = {
+    id : Nat;
+    linkLabel : Text;
+    url : Text;
+    order : Nat;
+  };
+
   // State
   let accessControlState = AccessControl.initState();
 
@@ -58,13 +66,64 @@ actor {
   let reports = Map.empty<Nat, Report>();
   let publications = Map.empty<Nat, Publication>();
   let userProfiles = Map.empty<Principal, UserProfile>();
+  let footerLinks = Map.empty<Nat, FooterLink>();
 
   var nextAidId = 1;
   var nextReportId = 1;
   var nextPublicationId = 1;
+  var nextFooterLinkId = 1;
 
   // Mixins
   include MixinAuthorization(accessControlState);
+
+  // Footer Links Management
+  public query ({ caller = _ }) func getFooterLinks() : async [FooterLink] {
+    footerLinks.values().toArray().sort(
+      func(a, b) { Nat.compare(a.order, b.order) }
+    );
+  };
+
+  public shared ({ caller }) func addFooterLink(link : FooterLink) : async Nat {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can add footer links");
+    };
+
+    let newLink = {
+      id = nextFooterLinkId;
+      linkLabel = link.linkLabel;
+      url = link.url;
+      order = link.order;
+    };
+    footerLinks.add(nextFooterLinkId, newLink);
+    nextFooterLinkId += 1;
+    newLink.id;
+  };
+
+  public shared ({ caller }) func updateFooterLink(link : FooterLink) : async Bool {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can update footer links");
+    };
+
+    if (not (footerLinks.containsKey(link.id))) {
+      return false;
+    };
+
+    footerLinks.add(link.id, link);
+    true;
+  };
+
+  public shared ({ caller }) func deleteFooterLink(id : Nat) : async Bool {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can delete footer links");
+    };
+
+    if (not (footerLinks.containsKey(id))) {
+      return false;
+    };
+
+    footerLinks.remove(id);
+    true;
+  };
 
   // User Profile Management
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
@@ -94,229 +153,33 @@ actor {
       Runtime.trap("Unauthorized: Only admins can initialize sample data");
     };
 
-    if (aidRecipients.isEmpty()) {
-      let sampleAids = [
+    // Initialize Footer Links if empty
+    if (footerLinks.isEmpty()) {
+      let sampleLinks = [
         {
-          id = nextAidId;
-          name = "Ahmad Zulfikar";
-          nik = "1101010101010001";
-          address = "Jl. Merdeka No. 10";
-          district = "Banda Aceh";
-          subdistrict = "Kuta Alam";
-          aidType = "logistik";
-          aidAmount = 500000;
-          distributionStatus = "menunggu";
-          registrationDate = Time.now();
+          id = nextFooterLinkId;
+          linkLabel = "Relawan TIK Indonesia";
+          url = "https://rtik.id";
+          order = 1;
         },
         {
-          id = nextAidId + 1;
-          name = "Siti Aisyah";
-          nik = "1101010101010002";
-          address = "Jl. Iskandar Muda No. 12";
-          district = "Banda Aceh";
-          subdistrict = "Meuraxa";
-          aidType = "hunian-sementara";
-          aidAmount = 1000000;
-          distributionStatus = "diproses";
-          registrationDate = Time.now();
+          id = nextFooterLinkId + 1;
+          linkLabel = "Badan Nasional Penanggulangan Bencana";
+          url = "https://bnpb.go.id";
+          order = 2;
         },
         {
-          id = nextAidId + 2;
-          name = "Muhammad Rizki";
-          nik = "1101010101010003";
-          address = "Gampong Lamteh";
-          district = "Aceh Besar";
-          subdistrict = "Lhoknga";
-          aidType = "kesehatan";
-          aidAmount = 300000;
-          distributionStatus = "didistribusikan";
-          registrationDate = Time.now();
-        },
-        {
-          id = nextAidId + 3;
-          name = "Fitriani";
-          nik = "1101010101010004";
-          address = "Jl. Teuku Umar";
-          district = "Aceh Timur";
-          subdistrict = "Peureulak";
-          aidType = "pendidikan";
-          aidAmount = 200000;
-          distributionStatus = "menunggu";
-          registrationDate = Time.now();
-        },
-        {
-          id = nextAidId + 4;
-          name = "Ismail";
-          nik = "1101010101010005";
-          address = "Jl. Diponegoro";
-          district = "Banda Aceh";
-          subdistrict = "Baiturrahman";
-          aidType = "logistik";
-          aidAmount = 700000;
-          distributionStatus = "diproses";
-          registrationDate = Time.now();
-        },
-        {
-          id = nextAidId + 5;
-          name = "Nurul Jannah";
-          nik = "1101010101010006";
-          address = "Gampong Keude";
-          district = "Aceh Besar";
-          subdistrict = "Indrapuri";
-          aidType = "hunian-tetap";
-          aidAmount = 1500000;
-          distributionStatus = "menunggu";
-          registrationDate = Time.now();
-        },
-        {
-          id = nextAidId + 6;
-          name = "Fadli";
-          nik = "1101010101010007";
-          address = "Jl. Sudirman";
-          district = "Aceh Timur";
-          subdistrict = "Langsa";
-          aidType = "logistik";
-          aidAmount = 400000;
-          distributionStatus = "didistribusikan";
-          registrationDate = Time.now();
-        },
-        {
-          id = nextAidId + 7;
-          name = "Rosita";
-          nik = "1101010101010008";
-          address = "Jl. Tgk. Chik Ditiro";
-          district = "Banda Aceh";
-          subdistrict = "Syiah Kuala";
-          aidType = "kesehatan";
-          aidAmount = 600000;
-          distributionStatus = "diproses";
-          registrationDate = Time.now();
-        },
-        {
-          id = nextAidId + 8;
-          name = "Hermawan";
-          nik = "1101010101010009";
-          address = "Gampong Cot";
-          district = "Aceh Besar";
-          subdistrict = "Sukamakmur";
-          aidType = "pendidikan";
-          aidAmount = 250000;
-          distributionStatus = "menunggu";
-          registrationDate = Time.now();
-        },
-        {
-          id = nextAidId + 9;
-          name = "Dewi Sartika";
-          nik = "1101010101010010";
-          address = "Jl. Panglima Polem";
-          district = "Banda Aceh";
-          subdistrict = "Ulee Kareng";
-          aidType = "logistik";
-          aidAmount = 550000;
-          distributionStatus = "didistribusikan";
-          registrationDate = Time.now();
+          id = nextFooterLinkId + 2;
+          linkLabel = "Indonesia Peduli Bencana";
+          url = "https://indonesia.go.id";
+          order = 3;
         },
       ];
 
-      for (aid in sampleAids.vals()) {
-        aidRecipients.add(aid.id, aid);
+      for (link in sampleLinks.vals()) {
+        footerLinks.add(link.id, link);
       };
-      nextAidId += 10;
-    };
-
-    if (reports.isEmpty()) {
-      let sampleReports = [
-        {
-          id = nextReportId;
-          title = "Laporan Bencana Banjir";
-          description = "Terjadi banjir di kawasan Lhoknga";
-          topic = "bencana";
-          reporterName = "Samsul";
-          reportDate = Time.now();
-          status = "baru";
-        },
-        {
-          id = nextReportId + 1;
-          title = "Pengaduan Bantuan Tidak Merata";
-          description = "Distribusi bantuan belum merata di Aceh Besar";
-          topic = "bantuan";
-          reporterName = "Rahmat";
-          reportDate = Time.now();
-          status = "ditindaklanjuti";
-        },
-        {
-          id = nextReportId + 2;
-          title = "Kekurangan Tenda di Pengungsian";
-          description = "Tenda di Meuraxa masih kurang";
-          topic = "pengungsian";
-          reporterName = "Siti";
-          reportDate = Time.now();
-          status = "selesai";
-        },
-        {
-          id = nextReportId + 3;
-          title = "Jalan Rusak Akibat Bencana";
-          description = "Jalan utama di Baiturrahman rusak";
-          topic = "infrastruktur";
-          reporterName = "Junaidi";
-          reportDate = Time.now();
-          status = "baru";
-        },
-        {
-          id = nextReportId + 4;
-          title = "Kekurangan Obat-obatan";
-          description = "Obat-obatan di pengungsian Meuraxa menipis";
-          topic = "kesehatan";
-          reporterName = "Dian";
-          reportDate = Time.now();
-          status = "ditindaklanjuti";
-        },
-      ];
-
-      for (report in sampleReports.vals()) {
-        reports.add(report.id, report);
-      };
-      nextReportId += 5;
-    };
-
-    if (publications.isEmpty()) {
-      let samplePublications = [
-        {
-          id = nextPublicationId;
-          title = "Pentingnya Kesiapsiagaan Bencana";
-          summary = "Tips untuk menghadapi bencana";
-          content = "Isi artikel lengkap tentang kesiapsiagaan bencana...";
-          author = "BNPB Aceh";
-          publishDate = Time.now();
-          tags = ["bencana", "kesiapsiagaan"];
-          readTime = 5;
-        },
-        {
-          id = nextPublicationId + 1;
-          title = "Proses Distribusi Bantuan";
-          summary = "Rincian proses distribusi bantuan di Aceh";
-          content = "Isi artikel lengkap tentang distribusi bantuan...";
-          author = "Dinas Sosial";
-          publishDate = Time.now();
-          tags = ["bantuan", "distribusi"];
-          readTime = 7;
-        },
-        {
-          id = nextPublicationId + 2;
-          title = "Tips Kesehatan di Pengungsian";
-          summary = "Cara menjaga kesehatan di pengungsian";
-          content = "Isi artikel lengkap tentang tips kesehatan...";
-          author = "Dinkes Aceh";
-          publishDate = Time.now();
-          tags = ["kesehatan", "pengungsian"];
-          readTime = 6;
-        },
-      ];
-
-      for (publication in samplePublications.vals()) {
-        publications.add(publication.id, publication);
-      };
-      nextPublicationId += 3;
+      nextFooterLinkId += 3;
     };
   };
 
@@ -428,12 +291,12 @@ actor {
   };
 
   // Reports Management
-  public query ({ caller }) func getAllReports() : async [Report] {
+  public query ({ caller = _ }) func getAllReports() : async [Report] {
     // Public access - anyone can view reports including guests
     reports.values().toArray();
   };
 
-  public query ({ caller }) func getReportById(id : Nat) : async ?Report {
+  public query ({ caller = _ }) func getReportById(id : Nat) : async ?Report {
     // Public access - anyone can view reports including guests
     reports.get(id);
   };
@@ -484,7 +347,7 @@ actor {
     };
   };
 
-  public query ({ caller }) func filterReportsByTopic(topic : Text) : async [Report] {
+  public query ({ caller = _ }) func filterReportsByTopic(topic : Text) : async [Report] {
     // Public access - anyone can filter reports including guests
     let filtered = reports.values().toArray().filter(
       func(report : Report) : Bool { report.topic == topic }
@@ -492,7 +355,7 @@ actor {
     filtered;
   };
 
-  public query ({ caller }) func filterReportsByStatus(status : Text) : async [Report] {
+  public query ({ caller = _ }) func filterReportsByStatus(status : Text) : async [Report] {
     // Public access - anyone can filter reports including guests
     let filtered = reports.values().toArray().filter(
       func(report : Report) : Bool { report.status == status }
@@ -501,12 +364,12 @@ actor {
   };
 
   // Publications Management
-  public query ({ caller }) func getAllPublications() : async [Publication] {
+  public query ({ caller = _ }) func getAllPublications() : async [Publication] {
     // Public access - anyone can view publications including guests
     publications.values().toArray();
   };
 
-  public query ({ caller }) func getPublicationById(id : Nat) : async ?Publication {
+  public query ({ caller = _ }) func getPublicationById(id : Nat) : async ?Publication {
     // Public access - anyone can view publications including guests
     publications.get(id);
   };
@@ -629,7 +492,10 @@ actor {
   };
 
   public query ({ caller }) func getReportsByTopic() : async [(Text, Nat)] {
-    // Public access - anyone can view report statistics including guests
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view statistics");
+    };
+
     let topicMap = Map.empty<Text, Nat>();
 
     for (report in reports.values()) {
@@ -647,7 +513,10 @@ actor {
   };
 
   public query ({ caller }) func getReportsByStatus() : async [(Text, Nat)] {
-    // Public access - anyone can view report statistics including guests
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view statistics");
+    };
+
     let statusMap = Map.empty<Text, Nat>();
 
     for (report in reports.values()) {
@@ -664,3 +533,4 @@ actor {
     statusMap.toArray();
   };
 };
+

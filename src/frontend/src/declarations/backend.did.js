@@ -20,6 +20,12 @@ export const AidRecipient = IDL.Record({
   'distributionStatus' : IDL.Text,
   'subdistrict' : IDL.Text,
 });
+export const FooterLink = IDL.Record({
+  'id' : IDL.Nat,
+  'url' : IDL.Text,
+  'linkLabel' : IDL.Text,
+  'order' : IDL.Nat,
+});
 export const Publication = IDL.Record({
   'id' : IDL.Nat,
   'title' : IDL.Text,
@@ -49,10 +55,12 @@ export const UserProfile = IDL.Record({ 'name' : IDL.Text });
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'addAidRecipient' : IDL.Func([AidRecipient], [IDL.Nat], []),
+  'addFooterLink' : IDL.Func([FooterLink], [IDL.Nat], []),
   'addPublication' : IDL.Func([Publication], [IDL.Nat], []),
   'addReport' : IDL.Func([Report], [IDL.Nat], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'deleteAidRecipient' : IDL.Func([IDL.Nat], [IDL.Bool], []),
+  'deleteFooterLink' : IDL.Func([IDL.Nat], [IDL.Bool], []),
   'deletePublication' : IDL.Func([IDL.Nat], [IDL.Bool], []),
   'filterAidRecipientsByDistrict' : IDL.Func(
       [IDL.Text],
@@ -81,6 +89,7 @@ export const idlService = IDL.Service({
   'getAllReports' : IDL.Func([], [IDL.Vec(Report)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+  'getFooterLinks' : IDL.Func([], [IDL.Vec(FooterLink)], ['query']),
   'getPublicationById' : IDL.Func([IDL.Nat], [IDL.Opt(Publication)], ['query']),
   'getRecipientsByAidType' : IDL.Func(
       [],
@@ -123,6 +132,7 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'updateAidRecipient' : IDL.Func([AidRecipient], [IDL.Bool], []),
+  'updateFooterLink' : IDL.Func([FooterLink], [IDL.Bool], []),
   'updatePublication' : IDL.Func([Publication], [IDL.Bool], []),
   'updateReportStatus' : IDL.Func([IDL.Nat, IDL.Text], [IDL.Bool], []),
 });
@@ -141,6 +151,12 @@ export const idlFactory = ({ IDL }) => {
     'registrationDate' : IDL.Int,
     'distributionStatus' : IDL.Text,
     'subdistrict' : IDL.Text,
+  });
+  const FooterLink = IDL.Record({
+    'id' : IDL.Nat,
+    'url' : IDL.Text,
+    'linkLabel' : IDL.Text,
+    'order' : IDL.Nat,
   });
   const Publication = IDL.Record({
     'id' : IDL.Nat,
@@ -171,10 +187,12 @@ export const idlFactory = ({ IDL }) => {
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'addAidRecipient' : IDL.Func([AidRecipient], [IDL.Nat], []),
+    'addFooterLink' : IDL.Func([FooterLink], [IDL.Nat], []),
     'addPublication' : IDL.Func([Publication], [IDL.Nat], []),
     'addReport' : IDL.Func([Report], [IDL.Nat], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'deleteAidRecipient' : IDL.Func([IDL.Nat], [IDL.Bool], []),
+    'deleteFooterLink' : IDL.Func([IDL.Nat], [IDL.Bool], []),
     'deletePublication' : IDL.Func([IDL.Nat], [IDL.Bool], []),
     'filterAidRecipientsByDistrict' : IDL.Func(
         [IDL.Text],
@@ -207,6 +225,7 @@ export const idlFactory = ({ IDL }) => {
     'getAllReports' : IDL.Func([], [IDL.Vec(Report)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+    'getFooterLinks' : IDL.Func([], [IDL.Vec(FooterLink)], ['query']),
     'getPublicationById' : IDL.Func(
         [IDL.Nat],
         [IDL.Opt(Publication)],
@@ -253,6 +272,7 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'updateAidRecipient' : IDL.Func([AidRecipient], [IDL.Bool], []),
+    'updateFooterLink' : IDL.Func([FooterLink], [IDL.Bool], []),
     'updatePublication' : IDL.Func([Publication], [IDL.Bool], []),
     'updateReportStatus' : IDL.Func([IDL.Nat, IDL.Text], [IDL.Bool], []),
   });

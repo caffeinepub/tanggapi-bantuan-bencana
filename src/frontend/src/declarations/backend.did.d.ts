@@ -22,6 +22,12 @@ export interface AidRecipient {
   'distributionStatus' : string,
   'subdistrict' : string,
 }
+export interface FooterLink {
+  'id' : bigint,
+  'url' : string,
+  'linkLabel' : string,
+  'order' : bigint,
+}
 export interface Publication {
   'id' : bigint,
   'title' : string,
@@ -48,10 +54,12 @@ export type UserRole = { 'admin' : null } |
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'addAidRecipient' : ActorMethod<[AidRecipient], bigint>,
+  'addFooterLink' : ActorMethod<[FooterLink], bigint>,
   'addPublication' : ActorMethod<[Publication], bigint>,
   'addReport' : ActorMethod<[Report], bigint>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'deleteAidRecipient' : ActorMethod<[bigint], boolean>,
+  'deleteFooterLink' : ActorMethod<[bigint], boolean>,
   'deletePublication' : ActorMethod<[bigint], boolean>,
   'filterAidRecipientsByDistrict' : ActorMethod<[string], Array<AidRecipient>>,
   'filterAidRecipientsByStatus' : ActorMethod<[string], Array<AidRecipient>>,
@@ -64,6 +72,7 @@ export interface _SERVICE {
   'getAllReports' : ActorMethod<[], Array<Report>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
+  'getFooterLinks' : ActorMethod<[], Array<FooterLink>>,
   'getPublicationById' : ActorMethod<[bigint], [] | [Publication]>,
   'getRecipientsByAidType' : ActorMethod<[], Array<[string, bigint]>>,
   'getRecipientsByDistrict' : ActorMethod<[], Array<[string, bigint]>>,
@@ -78,6 +87,7 @@ export interface _SERVICE {
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'searchAidRecipients' : ActorMethod<[string], Array<AidRecipient>>,
   'updateAidRecipient' : ActorMethod<[AidRecipient], boolean>,
+  'updateFooterLink' : ActorMethod<[FooterLink], boolean>,
   'updatePublication' : ActorMethod<[Publication], boolean>,
   'updateReportStatus' : ActorMethod<[bigint, string], boolean>,
 }

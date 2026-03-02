@@ -123,6 +123,12 @@ export interface Report {
 export interface UserProfile {
     name: string;
 }
+export interface FooterLink {
+    id: bigint;
+    url: string;
+    linkLabel: string;
+    order: bigint;
+}
 export enum UserRole {
     admin = "admin",
     user = "user",
@@ -131,10 +137,12 @@ export enum UserRole {
 export interface backendInterface {
     _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
     addAidRecipient(aid: AidRecipient): Promise<bigint>;
+    addFooterLink(link: FooterLink): Promise<bigint>;
     addPublication(publication: Publication): Promise<bigint>;
     addReport(report: Report): Promise<bigint>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     deleteAidRecipient(id: bigint): Promise<boolean>;
+    deleteFooterLink(id: bigint): Promise<boolean>;
     deletePublication(id: bigint): Promise<boolean>;
     filterAidRecipientsByDistrict(district: string): Promise<Array<AidRecipient>>;
     filterAidRecipientsByStatus(status: string): Promise<Array<AidRecipient>>;
@@ -147,6 +155,7 @@ export interface backendInterface {
     getAllReports(): Promise<Array<Report>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
+    getFooterLinks(): Promise<Array<FooterLink>>;
     getPublicationById(id: bigint): Promise<Publication | null>;
     getRecipientsByAidType(): Promise<Array<[string, bigint]>>;
     getRecipientsByDistrict(): Promise<Array<[string, bigint]>>;
@@ -161,6 +170,7 @@ export interface backendInterface {
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     searchAidRecipients(searchTerm: string): Promise<Array<AidRecipient>>;
     updateAidRecipient(aid: AidRecipient): Promise<boolean>;
+    updateFooterLink(link: FooterLink): Promise<boolean>;
     updatePublication(publication: Publication): Promise<boolean>;
     updateReportStatus(id: bigint, status: string): Promise<boolean>;
 }
@@ -192,6 +202,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.addAidRecipient(arg0);
+            return result;
+        }
+    }
+    async addFooterLink(arg0: FooterLink): Promise<bigint> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.addFooterLink(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.addFooterLink(arg0);
             return result;
         }
     }
@@ -248,6 +272,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.deleteAidRecipient(arg0);
+            return result;
+        }
+    }
+    async deleteFooterLink(arg0: bigint): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteFooterLink(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteFooterLink(arg0);
             return result;
         }
     }
@@ -417,6 +455,20 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.getCallerUserRole();
             return from_candid_UserRole_n5(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getFooterLinks(): Promise<Array<FooterLink>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getFooterLinks();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getFooterLinks();
+            return result;
         }
     }
     async getPublicationById(arg0: bigint): Promise<Publication | null> {
@@ -612,6 +664,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.updateAidRecipient(arg0);
+            return result;
+        }
+    }
+    async updateFooterLink(arg0: FooterLink): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateFooterLink(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateFooterLink(arg0);
             return result;
         }
     }

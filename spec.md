@@ -1,42 +1,30 @@
-# TANGGAPI - Sistem Informasi Data Penerima Bantuan Bencana
+# RTIK Indonesia Peduli - Footer Links Management
 
 ## Current State
-New project. No existing code.
+App has 5 pages: Dashboard, Peta, Tanggapi, Publikasi, Admin Panel. Footer has a static "Informasi" section with 3 hardcoded text items: "Pemerintah Provinsi Aceh", "Badan Penanggulangan Bencana Daerah", "Banda Aceh, Aceh, Indonesia".
 
 ## Requested Changes (Diff)
 
 ### Add
-- **Dashboard utama** dengan statistik ringkasan: total penerima bantuan, jumlah per jenis bantuan, jumlah per kabupaten/kota
-- **Manajemen data penerima bantuan**: form pendaftaran, daftar penerima, detail penerima
-- **Filter dan pencarian**: berdasarkan kabupaten/kota, jenis bantuan, status distribusi
-- **Halaman Peta** menampilkan sebaran penerima bantuan per wilayah (visual peta sederhana/tabel per wilayah)
-- **Halaman Laporan/Publikasi**: daftar laporan bencana, detail laporan dengan tag kategori
-- **Halaman Pengaduan (Tanggapi)**: form pengaduan warga, daftar pengaduan, filter topik
-- **Role-based access**: Admin dapat tambah/edit/hapus data; publik hanya bisa lihat
-- **Navigasi**: header dengan logo Tanggapi, menu Peta, Tanggapi, Publikasi, Dashboard
+- `FooterLink` type in backend: `{ id, label, url, order }` - label is display text, url is the hyperlink destination, order controls display sequence
+- Backend CRUD functions: `getFooterLinks` (public, no auth), `addFooterLink` (admin only), `updateFooterLink` (admin only), `deleteFooterLink` (admin only)
+- Default sample footer links initialized in `initializeSampleData`: 3 links replacing the existing hardcoded footer info items
+- New "Link Footer" tab in Admin Panel with full add/edit/delete management for footer links
+- Footer "Informasi" section renders dynamic footer links fetched from backend as clickable `<a>` elements with `target="_blank"`
 
 ### Modify
-- N/A (new project)
+- Backend: add `FooterLink` type and CRUD operations
+- `backend.d.ts`: add `FooterLink` interface and new functions
+- `useQueries.ts`: add hooks for footer links (useGetFooterLinks, useAddFooterLink, useUpdateFooterLink, useDeleteFooterLink)
+- `Layout.tsx`: footer "Informasi" section reads from backend and renders links dynamically
+- `AdminPage.tsx`: add 4th tab "Link Footer" with table + add/edit/delete dialogs
 
 ### Remove
-- N/A (new project)
+- Hardcoded static text items in footer "Informasi" section
 
 ## Implementation Plan
-
-### Backend (Motoko)
-1. **Data Model Penerima Bantuan**: id, nama, NIK, alamat, kabupaten, jenis bantuan, jumlah bantuan, status distribusi, tanggal, koordinat wilayah
-2. **Data Model Pengaduan**: id, judul, deskripsi, topik, nama pelapor, tanggal, status
-3. **Data Model Publikasi/Laporan**: id, judul, ringkasan, konten, penulis, tanggal, tags, kategori
-4. **CRUD endpoints** untuk setiap data model
-5. **Statistik**: total per kabupaten, per jenis bantuan, per status
-6. **Filter/search** penerima bantuan dan pengaduan
-
-### Frontend (React + TypeScript + Tailwind)
-1. Layout dengan header navigasi ala Tanggapi (logo, menu Peta/Tanggapi/Publikasi)
-2. Dashboard: kartu statistik, grafik distribusi bantuan per wilayah
-3. Halaman Peta: tabel/visual sebaran bantuan per kabupaten
-4. Halaman Tanggapi: daftar pengaduan dengan filter topik, form tambah pengaduan
-5. Halaman Publikasi: grid/list artikel laporan dengan thumbnail, tag, dan metadata
-6. Halaman Admin: form CRUD penerima bantuan (jika admin login)
-7. Halaman detail penerima bantuan
-8. Komponen pencarian dan filter global
+1. Regenerate backend with FooterLink type and CRUD functions
+2. Update backend.d.ts with FooterLink interface and new methods
+3. Add footer link hooks to useQueries.ts
+4. Update Layout.tsx footer to fetch and display dynamic links
+5. Add LinksTab component and tab trigger to AdminPage.tsx
