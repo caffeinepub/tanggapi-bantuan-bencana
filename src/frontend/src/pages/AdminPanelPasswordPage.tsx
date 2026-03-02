@@ -11,13 +11,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   Dialog,
   DialogContent,
   DialogFooter,
@@ -52,10 +45,7 @@ import {
   ClipboardCheck,
   Clock,
   ExternalLink,
-  Eye,
-  EyeOff,
   HandHeart,
-  KeyRound,
   Link as LinkIcon,
   Loader2,
   LogOut,
@@ -87,7 +77,7 @@ import {
   ReportStatusBadge,
 } from "../components/StatusBadge";
 import { useActor } from "../hooks/useActor";
-import { usePasswordAdminInit } from "../hooks/usePasswordAdminInit";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useAddAidRecipient,
   useAddFooterLink,
@@ -114,17 +104,6 @@ import {
   useUpdateReportStatus,
 } from "../hooks/useQueries";
 import { formatCurrency, formatDateId, newBigIntId } from "../utils/format";
-import { getSecretParameter } from "../utils/urlParams";
-
-// ─── Auth constant ────────────────────────────────────────────────────────────
-
-const DEFAULT_ADMIN_PASSWORD = "rtik2024";
-const SESSION_KEY = "admin_panel_auth";
-const PASSWORD_STORAGE_KEY = "admin_panel_password";
-
-function getAdminPassword(): string {
-  return localStorage.getItem(PASSWORD_STORAGE_KEY) || DEFAULT_ADMIN_PASSWORD;
-}
 
 // ─── Empty form defaults ──────────────────────────────────────────────────────
 
@@ -2201,212 +2180,19 @@ function BantuanPenerimaSummaryTab() {
   );
 }
 
-// ─── Login Form ───────────────────────────────────────────────────────────────
-
-interface LoginFormProps {
-  onSuccess: () => void;
-}
-
-function LoginForm({ onSuccess }: LoginFormProps) {
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setIsLoading(true);
-
-    // Simulate slight delay for UX
-    setTimeout(() => {
-      if (password === getAdminPassword()) {
-        sessionStorage.setItem(SESSION_KEY, "true");
-        onSuccess();
-      } else {
-        setError("Kata sandi salah");
-        setPassword("");
-      }
-      setIsLoading(false);
-    }, 400);
-  };
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-background section-pattern p-4">
-      <motion.div
-        initial={{ opacity: 0, y: 24, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.4, ease: "easeOut" }}
-        className="w-full max-w-sm"
-      >
-        <Card className="shadow-card-hover border-border">
-          <CardHeader className="text-center pb-2">
-            {/* Logo */}
-            <div className="flex justify-center mb-4">
-              <div className="w-20 h-20 rounded-2xl overflow-hidden bg-white shadow-md p-1 border border-border">
-                <img
-                  src="/assets/uploads/v-AbSTb_400x400-1--1.jpg"
-                  alt="Relawan TIK Indonesia Logo"
-                  className="w-full h-full object-contain"
-                />
-              </div>
-            </div>
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <div className="w-8 h-8 bg-amber-500/10 rounded-lg flex items-center justify-center">
-                <KeyRound className="w-4 h-4 text-amber-600" />
-              </div>
-              <CardTitle className="font-display text-2xl">
-                Panel Admin
-              </CardTitle>
-            </div>
-            <CardDescription className="text-sm">
-              Masukkan kata sandi untuk mengakses panel
-            </CardDescription>
-          </CardHeader>
-
-          <CardContent className="pt-4">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="admin-password">Kata Sandi</Label>
-                <div className="relative">
-                  <Input
-                    id="admin-password"
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      setError("");
-                    }}
-                    placeholder="Masukkan kata sandi"
-                    className={`pr-10 ${error ? "border-destructive focus-visible:ring-destructive" : ""}`}
-                    autoFocus
-                    autoComplete="current-password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    tabIndex={-1}
-                    aria-label={
-                      showPassword
-                        ? "Sembunyikan kata sandi"
-                        : "Tampilkan kata sandi"
-                    }
-                  >
-                    {showPassword ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
-                  </button>
-                </div>
-                {error && (
-                  <motion.p
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="text-xs text-destructive font-medium"
-                  >
-                    {error}
-                  </motion.p>
-                )}
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full bg-primary text-white gap-2"
-                disabled={isLoading || !password}
-              >
-                {isLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <KeyRound className="w-4 h-4" />
-                )}
-                {isLoading ? "Memeriksa..." : "Masuk"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </motion.div>
-    </div>
-  );
-}
-
 // ─── Admin Panel Content ──────────────────────────────────────────────────────
 
-interface AdminPanelContentProps {
-  onLogout: () => void;
-}
-
-function AdminPanelContent({ onLogout }: AdminPanelContentProps) {
-  const { isReady: isAdminInitReady } = usePasswordAdminInit();
-  const { actor } = useActor();
+function AdminPanelContent() {
+  const { clear } = useInternetIdentity();
   const initSampleData = useInitializeSampleData();
-
-  // Change-password dialog state
-  const [isChangePwOpen, setIsChangePwOpen] = useState(false);
-  const [pwOld, setPwOld] = useState("");
-  const [pwNew, setPwNew] = useState("");
-  const [pwConfirm, setPwConfirm] = useState("");
-  const [showPwOld, setShowPwOld] = useState(false);
-  const [showPwNew, setShowPwNew] = useState(false);
-  const [showPwConfirm, setShowPwConfirm] = useState(false);
-  const [pwError, setPwError] = useState("");
-
-  const handleOpenChangePw = () => {
-    setPwOld("");
-    setPwNew("");
-    setPwConfirm("");
-    setPwError("");
-    setShowPwOld(false);
-    setShowPwNew(false);
-    setShowPwConfirm(false);
-    setIsChangePwOpen(true);
-  };
-
-  const handleChangePassword = () => {
-    setPwError("");
-    if (pwOld !== getAdminPassword()) {
-      setPwError("Password lama salah");
-      return;
-    }
-    if (pwNew.length < 6) {
-      setPwError("Password baru minimal 6 karakter");
-      return;
-    }
-    if (pwNew !== pwConfirm) {
-      setPwError("Konfirmasi password tidak cocok");
-      return;
-    }
-    localStorage.setItem(PASSWORD_STORAGE_KEY, pwNew);
-    setIsChangePwOpen(false);
-    toast.success("Password berhasil diubah");
-  };
-
-  // Show loading state while password-admin init is in progress
-  if (!isAdminInitReady) {
-    return (
-      <div className="min-h-screen flex items-center justify-center section-pattern">
-        <div className="flex items-center gap-3 text-muted-foreground">
-          <Loader2 className="w-6 h-6 animate-spin" />
-          <span className="text-sm font-medium">
-            Menginisialisasi panel admin...
-          </span>
-        </div>
-      </div>
-    );
-  }
+  const { actor } = useActor();
 
   const handleInitSampleData = async () => {
-    // Re-init access control for password admin sessions before writing
-    const isPasswordAdmin =
-      sessionStorage.getItem("admin_panel_auth") === "true";
-    if (isPasswordAdmin && actor) {
-      const adminToken = getSecretParameter("caffeineAdminToken") || "";
-      try {
-        await actor._initializeAccessControlWithSecret(adminToken);
-      } catch (e) {
-        console.warn("re-init access control failed", e);
-      }
+    if (!actor) {
+      toast.error(
+        "Sistem sedang memuat, harap tunggu sebentar lalu coba lagi.",
+      );
+      return;
     }
     try {
       await initSampleData.mutateAsync();
@@ -2414,11 +2200,6 @@ function AdminPanelContent({ onLogout }: AdminPanelContentProps) {
     } catch {
       toast.error("Gagal menginisialisasi data sampel");
     }
-  };
-
-  const handleLogout = () => {
-    sessionStorage.removeItem(SESSION_KEY);
-    onLogout();
   };
 
   return (
@@ -2433,7 +2214,7 @@ function AdminPanelContent({ onLogout }: AdminPanelContentProps) {
           >
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
-                <KeyRound className="w-6 h-6 text-amber-400" />
+                <Shield className="w-6 h-6 text-gold" />
               </div>
               <div>
                 <h1 className="font-display text-3xl font-bold text-white mb-0.5">
@@ -2447,9 +2228,10 @@ function AdminPanelContent({ onLogout }: AdminPanelContentProps) {
             <div className="flex items-center gap-2 flex-shrink-0">
               <Button
                 onClick={handleInitSampleData}
-                disabled={initSampleData.isPending}
+                disabled={initSampleData.isPending || !actor}
                 variant="outline"
                 className="border-white/20 text-white bg-white/10 hover:bg-white/20 gap-2"
+                data-ocid="admin.primary_button"
               >
                 {initSampleData.isPending ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -2459,17 +2241,10 @@ function AdminPanelContent({ onLogout }: AdminPanelContentProps) {
                 <span className="hidden sm:inline">Init Data Sampel</span>
               </Button>
               <Button
-                onClick={handleOpenChangePw}
-                variant="outline"
-                className="border-white/20 text-white bg-white/10 hover:bg-amber-500/20 hover:border-amber-400/40 hover:text-amber-300 gap-2 transition-colors"
-              >
-                <KeyRound className="w-4 h-4" />
-                <span className="hidden sm:inline">Ganti Password</span>
-              </Button>
-              <Button
-                onClick={handleLogout}
+                onClick={clear}
                 variant="outline"
                 className="border-white/20 text-white bg-white/10 hover:bg-red-500/20 hover:border-red-400/40 hover:text-red-300 gap-2 transition-colors"
+                data-ocid="admin.secondary_button"
               >
                 <LogOut className="w-4 h-4" />
                 <span className="hidden sm:inline">Keluar</span>
@@ -2479,160 +2254,66 @@ function AdminPanelContent({ onLogout }: AdminPanelContentProps) {
         </div>
       </div>
 
-      {/* Change Password Dialog */}
-      <Dialog open={isChangePwOpen} onOpenChange={setIsChangePwOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="font-display flex items-center gap-2">
-              <KeyRound className="w-5 h-5 text-amber-600" />
-              Ganti Password Admin
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            {/* Old password */}
-            <div>
-              <Label>Password Lama *</Label>
-              <div className="relative mt-1.5">
-                <Input
-                  type={showPwOld ? "text" : "password"}
-                  value={pwOld}
-                  onChange={(e) => {
-                    setPwOld(e.target.value);
-                    setPwError("");
-                  }}
-                  placeholder="Password saat ini"
-                  className="pr-10"
-                  autoComplete="current-password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPwOld((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  tabIndex={-1}
-                >
-                  {showPwOld ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
-                </button>
-              </div>
-            </div>
-            {/* New password */}
-            <div>
-              <Label>
-                Password Baru *{" "}
-                <span className="text-muted-foreground font-normal text-xs">
-                  (minimal 6 karakter)
-                </span>
-              </Label>
-              <div className="relative mt-1.5">
-                <Input
-                  type={showPwNew ? "text" : "password"}
-                  value={pwNew}
-                  onChange={(e) => {
-                    setPwNew(e.target.value);
-                    setPwError("");
-                  }}
-                  placeholder="Password baru"
-                  className="pr-10"
-                  autoComplete="new-password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPwNew((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  tabIndex={-1}
-                >
-                  {showPwNew ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
-                </button>
-              </div>
-            </div>
-            {/* Confirm password */}
-            <div>
-              <Label>Konfirmasi Password Baru *</Label>
-              <div className="relative mt-1.5">
-                <Input
-                  type={showPwConfirm ? "text" : "password"}
-                  value={pwConfirm}
-                  onChange={(e) => {
-                    setPwConfirm(e.target.value);
-                    setPwError("");
-                  }}
-                  placeholder="Ulangi password baru"
-                  className="pr-10"
-                  autoComplete="new-password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPwConfirm((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  tabIndex={-1}
-                >
-                  {showPwConfirm ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
-                </button>
-              </div>
-            </div>
-            {pwError && (
-              <p className="text-xs text-destructive font-medium">{pwError}</p>
-            )}
-          </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setIsChangePwOpen(false)}>
-              Batal
-            </Button>
-            <Button
-              onClick={handleChangePassword}
-              disabled={!pwOld || !pwNew || !pwConfirm}
-              className="bg-amber-600 hover:bg-amber-700 text-white gap-2"
-            >
-              <KeyRound className="w-4 h-4" />
-              Simpan Password
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       <div className="container mx-auto px-4 py-8">
         <Tabs defaultValue="recipients">
           <TabsList className="mb-6 bg-white border border-border shadow-xs flex-wrap h-auto gap-1 p-1">
-            <TabsTrigger value="recipients" className="gap-1.5">
+            <TabsTrigger
+              value="recipients"
+              className="gap-1.5"
+              data-ocid="admin.recipients.tab"
+            >
               <Users className="w-4 h-4" />
               <span className="hidden sm:inline">Penerima Aid</span>
               <span className="sm:hidden">Aid</span>
             </TabsTrigger>
-            <TabsTrigger value="bantuan-penerima" className="gap-1.5">
+            <TabsTrigger
+              value="bantuan-penerima"
+              className="gap-1.5"
+              data-ocid="admin.bantuan.tab"
+            >
               <HandHeart className="w-4 h-4" />
               <span className="hidden sm:inline">Bantuan Pasca Bencana</span>
               <span className="sm:hidden">Bantuan</span>
             </TabsTrigger>
-            <TabsTrigger value="reports" className="gap-1.5">
+            <TabsTrigger
+              value="reports"
+              className="gap-1.5"
+              data-ocid="admin.reports.tab"
+            >
               <MessageSquare className="w-4 h-4" />
               Pengaduan
             </TabsTrigger>
-            <TabsTrigger value="publications" className="gap-1.5">
+            <TabsTrigger
+              value="publications"
+              className="gap-1.5"
+              data-ocid="admin.publications.tab"
+            >
               <BookOpen className="w-4 h-4" />
               Publikasi
             </TabsTrigger>
-            <TabsTrigger value="links" className="gap-1.5">
+            <TabsTrigger
+              value="links"
+              className="gap-1.5"
+              data-ocid="admin.links.tab"
+            >
               <LinkIcon className="w-4 h-4" />
               <span className="hidden sm:inline">Link Footer</span>
               <span className="sm:hidden">Link</span>
             </TabsTrigger>
-            <TabsTrigger value="users" className="gap-1.5">
+            <TabsTrigger
+              value="users"
+              className="gap-1.5"
+              data-ocid="admin.users.tab"
+            >
               <UserCog className="w-4 h-4" />
               <span className="hidden sm:inline">Daftar User</span>
               <span className="sm:hidden">User</span>
             </TabsTrigger>
-            <TabsTrigger value="validators" className="gap-1.5">
+            <TabsTrigger
+              value="validators"
+              className="gap-1.5"
+              data-ocid="admin.validators.tab"
+            >
               <ClipboardCheck className="w-4 h-4" />
               <span className="hidden sm:inline">Admin Validasi</span>
               <span className="sm:hidden">Validasi</span>
@@ -2675,13 +2356,72 @@ function AdminPanelContent({ onLogout }: AdminPanelContentProps) {
 // ─── Main Page Component ──────────────────────────────────────────────────────
 
 export default function AdminPanelPasswordPage() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return sessionStorage.getItem(SESSION_KEY) === "true";
-  });
+  const { identity, login, isLoggingIn, isInitializing } =
+    useInternetIdentity();
 
-  if (!isAuthenticated) {
-    return <LoginForm onSuccess={() => setIsAuthenticated(true)} />;
+  // Show loading while restoring session
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <Loader2 className="w-6 h-6 animate-spin" />
+          <span className="text-sm font-medium">Memuat sesi...</span>
+        </div>
+      </div>
+    );
   }
 
-  return <AdminPanelContent onLogout={() => setIsAuthenticated(false)} />;
+  // Show login page if not authenticated
+  if (!identity) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background section-pattern p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 24, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+          className="w-full max-w-sm"
+        >
+          <div className="bg-white rounded-2xl shadow-card-hover border border-border p-8 text-center">
+            {/* Logo */}
+            <div className="flex justify-center mb-6">
+              <div className="w-20 h-20 rounded-2xl overflow-hidden bg-white shadow-md p-1 border border-border">
+                <img
+                  src="/assets/uploads/v-AbSTb_400x400-1--1.jpg"
+                  alt="Relawan TIK Indonesia Logo"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+            </div>
+            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Shield className="w-6 h-6 text-primary" />
+            </div>
+            <h2 className="font-display text-2xl font-bold mb-2">
+              Panel Admin
+            </h2>
+            <p className="text-muted-foreground text-sm mb-6">
+              Login dengan Internet Identity untuk mengakses panel admin dan
+              mengelola semua data.
+            </p>
+            <Button
+              onClick={login}
+              disabled={isLoggingIn}
+              className="bg-primary text-white gap-2 w-full"
+              data-ocid="admin-panel.primary_button"
+            >
+              {isLoggingIn ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Shield className="w-4 h-4" />
+              )}
+              {isLoggingIn
+                ? "Memproses Login..."
+                : "Login dengan Internet Identity"}
+            </Button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  return <AdminPanelContent />;
 }

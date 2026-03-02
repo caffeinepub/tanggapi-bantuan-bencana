@@ -275,9 +275,16 @@ export function useGetCallerUserRole() {
     queryKey: ["callerUserRole"],
     queryFn: async () => {
       if (!actor) return UserRole.guest;
-      return actor.getCallerUserRole();
+      try {
+        return await actor.getCallerUserRole();
+      } catch {
+        return UserRole.guest;
+      }
     },
     enabled: !!actor && !isFetching,
+    retry: 0,
+    staleTime: 0,
+    refetchOnMount: true,
   });
 }
 
@@ -287,9 +294,16 @@ export function useIsCallerAdmin() {
     queryKey: ["isCallerAdmin"],
     queryFn: async () => {
       if (!actor) return false;
-      return actor.isCallerAdmin();
+      try {
+        return await actor.isCallerAdmin();
+      } catch {
+        return false;
+      }
     },
     enabled: !!actor && !isFetching,
+    retry: 0,
+    staleTime: 0,
+    refetchOnMount: true,
   });
 }
 
@@ -327,9 +341,16 @@ export function useGetAllUsers() {
     queryKey: ["allUsers"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllUsers();
+      try {
+        return await actor.getAllUsers();
+      } catch {
+        return [];
+      }
     },
     enabled: !!actor && !isFetching,
+    retry: 0,
+    staleTime: 0,
+    refetchOnMount: true,
   });
 }
 
@@ -471,9 +492,16 @@ export function useIsCallerValidator() {
     queryKey: ["isCallerValidator"],
     queryFn: async () => {
       if (!actor) return false;
-      return actor.isCallerValidator();
+      try {
+        return await actor.isCallerValidator();
+      } catch {
+        return false;
+      }
     },
     enabled: !!actor && !isFetching,
+    retry: 0,
+    staleTime: 0,
+    refetchOnMount: true,
   });
 }
 
@@ -483,9 +511,16 @@ export function useIsCallerAdminOrValidator() {
     queryKey: ["isCallerAdminOrValidator"],
     queryFn: async () => {
       if (!actor) return false;
-      return actor.isCallerAdminOrValidator();
+      try {
+        return await actor.isCallerAdminOrValidator();
+      } catch {
+        return false;
+      }
     },
     enabled: !!actor && !isFetching,
+    retry: 0,
+    staleTime: 0,
+    refetchOnMount: true,
   });
 }
 
@@ -497,9 +532,14 @@ export function useGetAllValidationRecords(isAdminOrValidator?: boolean) {
     queryKey: ["validationRecords"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllValidationRecords();
+      try {
+        return await actor.getAllValidationRecords();
+      } catch {
+        return [];
+      }
     },
     enabled: !!actor && !isFetching && (isAdminOrValidator ?? true),
+    retry: 0,
   });
 }
 
@@ -509,9 +549,14 @@ export function useGetValidationRecordsByVictim(victimId: bigint | null) {
     queryKey: ["validationRecordsByVictim", victimId?.toString()],
     queryFn: async () => {
       if (!actor || victimId === null) return [];
-      return actor.getValidationRecordsByVictim(victimId);
+      try {
+        return await actor.getValidationRecordsByVictim(victimId);
+      } catch {
+        return [];
+      }
     },
     enabled: !!actor && !isFetching && victimId !== null,
+    retry: 0,
   });
 }
 
@@ -621,9 +666,16 @@ export function useGetAllValidators() {
     queryKey: ["allValidators"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllValidators();
+      try {
+        return await actor.getAllValidators();
+      } catch {
+        return [];
+      }
     },
     enabled: !!actor && !isFetching,
+    retry: 0,
+    staleTime: 0,
+    refetchOnMount: true,
   });
 }
 

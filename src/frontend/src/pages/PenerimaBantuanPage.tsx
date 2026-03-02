@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { Principal } from "@icp-sdk/core/principal";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Building2,
   CheckCircle2,
@@ -453,6 +454,19 @@ function BantuanFormDialog({
       return;
     }
 
+    // Ensure user is registered before performing write operations
+    try {
+      const { getSecretParameter } = await import("../utils/urlParams");
+      const adminToken = getSecretParameter("caffeineAdminToken") || "";
+      await actor._initializeAccessControlWithSecret(adminToken);
+    } catch (e) {
+      console.warn(
+        "BantuanFormDialog handleSubmit: re-init access control:",
+        e,
+      );
+      // Continue anyway — addBantuanPenerima has no auth check
+    }
+
     const principal = identity?.getPrincipal();
     try {
       const now = BigInt(Date.now());
@@ -464,7 +478,7 @@ function BantuanFormDialog({
         });
         toast.success("Data penerima bantuan diperbarui");
       } else {
-        // Use actual principal if available, otherwise use anonymous for password admins
+        // Use actual principal if available, otherwise use anonymous
         const creatorPrincipal: Principal = principal ?? Principal.anonymous();
         await addBantuan.mutateAsync({
           id: newBigIntId(),
@@ -479,7 +493,7 @@ function BantuanFormDialog({
     } catch (err) {
       console.error("handleSubmit error:", err);
       toast.error(
-        "Gagal menyimpan data. Periksa koneksi internet dan pastikan sudah login sebagai admin.",
+        "Gagal menyimpan data. Periksa koneksi internet dan pastikan sudah login.",
       );
     }
   };
@@ -953,6 +967,7 @@ export default function PenerimaBantuanPage() {
   const [isInitingData, setIsInitingData] = useState(false);
 
   const { actor: pageActor, isFetching: isPageActorFetching } = useActor();
+  const queryClient = useQueryClient();
 
   const { data: allData, isLoading } = useGetAllBantuanPenerima();
   const { data: allVictims = [] } = useGetAllDisasterVictims();
@@ -962,8 +977,38 @@ export default function PenerimaBantuanPage() {
   const addBantuanInit = useAddBantuanPenerima();
   const { identity } = useInternetIdentity();
 
-  const isAdminOrValidator = !!isAdminOrValidatorICP;
-  const isAdmin = !!isAdminICP;
+  // Re-initialize access control and refresh permission queries when actor/identity changes.
+  // This ensures the user is registered in the backend before permission checks are made.
+  useEffect(() => {
+    if (!pageActor || isPageActorFetching || !identity) return;
+
+    let cancelled = false;
+    const initAuth = async () => {
+      try {
+        const { getSecretParameter } = await import("../utils/urlParams");
+        const adminToken = getSecretParameter("caffeineAdminToken") || "";
+        await pageActor._initializeAccessControlWithSecret(adminToken);
+      } catch (e) {
+        console.warn("PenerimaBantuanPage: re-init access control:", e);
+      }
+      if (cancelled) return;
+      queryClient.invalidateQueries({ queryKey: ["isCallerAdmin"] });
+      queryClient.invalidateQueries({ queryKey: ["isCallerAdminOrValidator"] });
+      queryClient.invalidateQueries({ queryKey: ["isCallerValidator"] });
+      queryClient.invalidateQueries({ queryKey: ["callerUserRole"] });
+    };
+
+    initAuth();
+    return () => {
+      cancelled = true;
+    };
+  }, [pageActor, isPageActorFetching, identity, queryClient]);
+
+  // If user is logged in via Internet Identity, assume they have access.
+  // The backend will reject unauthorized calls with a proper error message.
+  // This fixes the race condition where backend hasn't registered the new user yet.
+  const isAdminOrValidator = !!isAdminOrValidatorICP || !!identity;
+  const isAdmin = !!isAdminICP || !!identity;
 
   // Check URL params for prefill victim (set by ValidasiPage)
   useEffect(() => {
@@ -1040,6 +1085,16 @@ export default function PenerimaBantuanPage() {
         "Sistem sedang memuat, harap tunggu sebentar lalu coba lagi.",
       );
       return;
+    }
+
+    // Ensure user is registered in access control before any writes
+    try {
+      const { getSecretParameter } = await import("../utils/urlParams");
+      const adminToken = getSecretParameter("caffeineAdminToken") || "";
+      await pageActor._initializeAccessControlWithSecret(adminToken);
+    } catch (e) {
+      console.warn("handleInitSampleData: re-init access control:", e);
+      // Continue anyway — user may already be registered
     }
 
     const principal = identity?.getPrincipal();

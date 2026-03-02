@@ -38,6 +38,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import type { Principal } from "@icp-sdk/core/principal";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
   BookOpen,
@@ -48,7 +49,6 @@ import {
   HandHeart,
   Link as LinkIcon,
   Loader2,
-  Lock,
   MessageSquare,
   Pencil,
   Plus,
@@ -62,7 +62,7 @@ import {
   Users,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import type {
   AidRecipient,
@@ -98,19 +98,13 @@ import {
   useGetFooterLinks,
   useGetValidationStats,
   useInitializeSampleData,
-  useIsCallerAdmin,
   useRevokeValidatorRole,
   useUpdateAidRecipient,
   useUpdateFooterLink,
   useUpdatePublication,
   useUpdateReportStatus,
 } from "../hooks/useQueries";
-import {
-  formatCurrency,
-  formatDateId,
-  getAidTypeLabel,
-  newBigIntId,
-} from "../utils/format";
+import { formatCurrency, formatDateId, newBigIntId } from "../utils/format";
 
 // ─── Sample Data Bantuan Penerima (data dari berbagai provinsi Indonesia) ─────
 
@@ -2346,13 +2340,45 @@ function BantuanPenerimaSummaryTab() {
 // ─── Admin Page ───────────────────────────────────────────────────────────────
 
 export default function AdminPage() {
-  const { data: isAdmin, isLoading: checkingAdmin } = useIsCallerAdmin();
   const initSampleData = useInitializeSampleData();
   const addBantuanInit = useAddBantuanPenerima();
   const { data: existingBantuan } = useGetAllBantuanPenerima();
   const [isInitingBantuan, setIsInitingBantuan] = useState(false);
   const { actor, isFetching: isActorFetching } = useActor();
-  const { identity } = useInternetIdentity();
+  const { identity, login, isLoggingIn, isInitializing } =
+    useInternetIdentity();
+  const queryClient = useQueryClient();
+
+  // Re-initialize access control and refresh permission queries when identity changes.
+  // This fixes the race condition where permission queries run before the actor has
+  // registered the user via _initializeAccessControlWithSecret.
+  useEffect(() => {
+    if (!actor || isActorFetching || !identity) return;
+
+    let cancelled = false;
+    const initAuth = async () => {
+      try {
+        const { getSecretParameter } = await import("../utils/urlParams");
+        const adminToken = getSecretParameter("caffeineAdminToken") || "";
+        await actor._initializeAccessControlWithSecret(adminToken);
+      } catch (e) {
+        console.warn("AdminPage: re-init access control:", e);
+      }
+      if (cancelled) return;
+      // Invalidate and refetch permission queries so they reflect the registered role
+      queryClient.invalidateQueries({ queryKey: ["isCallerAdmin"] });
+      queryClient.invalidateQueries({ queryKey: ["isCallerAdminOrValidator"] });
+      queryClient.invalidateQueries({ queryKey: ["isCallerValidator"] });
+      queryClient.invalidateQueries({ queryKey: ["callerUserRole"] });
+      queryClient.invalidateQueries({ queryKey: ["allUsers"] });
+      queryClient.invalidateQueries({ queryKey: ["allValidators"] });
+    };
+
+    initAuth();
+    return () => {
+      cancelled = true;
+    };
+  }, [actor, isActorFetching, identity, queryClient]);
 
   const handleInitSampleData = async () => {
     if (!actor || isActorFetching) {
@@ -2360,6 +2386,18 @@ export default function AdminPage() {
         "Sistem sedang memuat, harap tunggu sebentar lalu coba lagi.",
       );
       return;
+    }
+
+    // Ensure user is registered in access control before performing admin actions
+    try {
+      const { getSecretParameter } = await import("../utils/urlParams");
+      const adminToken = getSecretParameter("caffeineAdminToken") || "";
+      await actor._initializeAccessControlWithSecret(adminToken);
+      queryClient.invalidateQueries({ queryKey: ["isCallerAdmin"] });
+      queryClient.invalidateQueries({ queryKey: ["isCallerAdminOrValidator"] });
+    } catch (e) {
+      console.warn("handleInitSampleData: re-init access control:", e);
+      // Continue anyway — user may already be registered
     }
 
     let aidSuccess = false;
@@ -2418,18 +2456,20 @@ export default function AdminPage() {
     }
   };
 
-  if (checkingAdmin) {
+  // Show loading while checking identity session
+  if (isInitializing) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-3" />
-          <p className="text-muted-foreground">Memeriksa akses...</p>
+          <p className="text-muted-foreground">Memuat sesi...</p>
         </div>
       </div>
     );
   }
 
-  if (!isAdmin) {
+  // Require login via Internet Identity
+  if (!identity) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background section-pattern">
         <motion.div
@@ -2437,16 +2477,37 @@ export default function AdminPage() {
           animate={{ opacity: 1, scale: 1 }}
           className="text-center max-w-sm p-8 bg-white rounded-2xl shadow-card-hover border border-border"
         >
-          <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Lock className="w-8 h-8 text-destructive" />
+          <div className="flex justify-center mb-4">
+            <div className="w-20 h-20 rounded-2xl overflow-hidden bg-white shadow-md p-1 border border-border">
+              <img
+                src="/assets/uploads/v-AbSTb_400x400-1--1.jpg"
+                alt="Relawan TIK Indonesia Logo"
+                className="w-full h-full object-contain"
+              />
+            </div>
           </div>
-          <h2 className="font-display text-xl font-bold mb-2">
-            Akses Terbatas
-          </h2>
-          <p className="text-muted-foreground text-sm mb-4">
-            Halaman ini hanya dapat diakses oleh administrator. Silakan masuk
-            dengan akun admin terlebih dahulu.
+          <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Shield className="w-7 h-7 text-primary" />
+          </div>
+          <h2 className="font-display text-xl font-bold mb-2">Admin Panel</h2>
+          <p className="text-muted-foreground text-sm mb-6">
+            Silakan login dengan Internet Identity untuk mengakses panel admin.
           </p>
+          <Button
+            onClick={login}
+            disabled={isLoggingIn}
+            className="bg-primary text-white gap-2 w-full"
+            data-ocid="admin.primary_button"
+          >
+            {isLoggingIn ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Shield className="w-4 h-4" />
+            )}
+            {isLoggingIn
+              ? "Memproses Login..."
+              : "Login dengan Internet Identity"}
+          </Button>
         </motion.div>
       </div>
     );
