@@ -124,10 +124,10 @@ function InteractiveMap({
       const marker = L.circleMarker(coords, {
         radius,
         fillColor: isSelected ? "#f59e0b" : "#1e3a5f",
-        color: isSelected ? "#d97706" : "#fff",
-        weight: 2,
+        color: isSelected ? "#d97706" : "#3b82f6",
+        weight: 2.5,
         opacity: 1,
-        fillOpacity: 0.85,
+        fillOpacity: 0.9,
       });
 
       marker.bindPopup(
@@ -417,24 +417,36 @@ export default function PetaPage() {
               )}
 
               {/* Legend */}
-              <div className="bg-white rounded-xl shadow-card border border-border/50 p-4">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                  Keterangan
+              <div className="bg-white rounded-xl shadow-card border-2 border-blue-200 p-4">
+                <p className="text-sm font-bold text-foreground mb-3">
+                  KETERANGAN
                 </p>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full bg-[#1e3a5f] border-2 border-white shadow" />
-                    <span className="text-xs text-muted-foreground">
+                <div className="space-y-2.5">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-5 h-5 rounded-full flex-shrink-0 shadow-md"
+                      style={{
+                        backgroundColor: "#1e3a5f",
+                        border: "2.5px solid #3b82f6",
+                      }}
+                    />
+                    <span className="text-sm text-foreground">
                       Lokasi penerima bantuan
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full bg-amber-400 border-2 border-amber-600 shadow" />
-                    <span className="text-xs text-muted-foreground">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-5 h-5 rounded-full flex-shrink-0 shadow-md"
+                      style={{
+                        backgroundColor: "#f59e0b",
+                        border: "2.5px solid #d97706",
+                      }}
+                    />
+                    <span className="text-sm text-foreground">
                       Lokasi dipilih
                     </span>
                   </div>
-                  <div className="text-xs text-muted-foreground mt-1 pt-2 border-t border-border/50">
+                  <div className="text-xs text-blue-600 mt-1 pt-2.5 border-t border-blue-100 font-medium">
                     Ukuran lingkaran menunjukkan jumlah penerima
                   </div>
                 </div>
