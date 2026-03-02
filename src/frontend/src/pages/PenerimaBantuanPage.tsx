@@ -72,7 +72,9 @@ import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { BantuanPenerima, DisasterVictim } from "../backend.d";
+import { useActor } from "../hooks/useActor";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import { usePasswordAdminInit } from "../hooks/usePasswordAdminInit";
 import {
   useAddBantuanPenerima,
   useDeleteBantuanPenerima,
@@ -352,6 +354,7 @@ function BantuanFormDialog({
   isAdminOrValidator,
   prefillVictim,
   victims,
+  isAdminReady,
 }: {
   editing: BantuanPenerima | null;
   open: boolean;
@@ -359,6 +362,7 @@ function BantuanFormDialog({
   isAdminOrValidator: boolean;
   prefillVictim?: DisasterVictim | null;
   victims: DisasterVictim[];
+  isAdminReady: boolean;
 }) {
   const [form, setForm] = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM });
   const [selectedVictim, setSelectedVictim] = useState<DisasterVictim | null>(
@@ -366,6 +370,7 @@ function BantuanFormDialog({
   );
   const addBantuan = useAddBantuanPenerima();
   const updateBantuan = useUpdateBantuanPenerima();
+  const { actor, isFetching: isActorFetching } = useActor();
   const { identity } = useInternetIdentity();
 
   const applyVictimToForm = useCallback((victim: DisasterVictim) => {
@@ -444,6 +449,13 @@ function BantuanFormDialog({
       toast.error("Keperluan bantuan wajib diisi");
       return;
     }
+    if (!actor || isActorFetching || !isAdminReady) {
+      toast.error(
+        "Sistem sedang memuat, harap tunggu sebentar lalu coba lagi.",
+      );
+      return;
+    }
+
     const principal = identity?.getPrincipal();
     try {
       const now = BigInt(Date.now());
@@ -467,9 +479,10 @@ function BantuanFormDialog({
         toast.success("Data penerima bantuan ditambahkan");
       }
       onClose();
-    } catch {
+    } catch (err) {
+      console.error("handleSubmit error:", err);
       toast.error(
-        "Gagal menyimpan data. Pastikan koneksi internet stabil dan coba lagi.",
+        "Gagal menyimpan data. Periksa koneksi internet dan pastikan sudah login sebagai admin.",
       );
     }
   };
@@ -694,12 +707,19 @@ function BantuanFormDialog({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={addBantuan.isPending || updateBantuan.isPending}
+            disabled={
+              addBantuan.isPending ||
+              updateBantuan.isPending ||
+              isActorFetching ||
+              !actor ||
+              !isAdminReady
+            }
             className="bg-primary text-white gap-2"
           >
-            {(addBantuan.isPending || updateBantuan.isPending) && (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            )}
+            {(addBantuan.isPending ||
+              updateBantuan.isPending ||
+              isActorFetching ||
+              !isAdminReady) && <Loader2 className="w-4 h-4 animate-spin" />}
             {editing ? "Perbarui Data" : "Tambah Data"}
           </Button>
         </DialogFooter>
@@ -937,8 +957,14 @@ export default function PenerimaBantuanPage() {
   );
   const [isInitingData, setIsInitingData] = useState(false);
 
+  // Initialize access control for password-admin sessions (no Internet Identity).
+  // Wait until initialization is done before allowing submit.
+  const { isReady: isAdminInitReady } = usePasswordAdminInit();
+
   // Check if user is authenticated via password-based admin panel
   const isPasswordAdmin = sessionStorage.getItem("admin_panel_auth") === "true";
+
+  const { actor: pageActor, isFetching: isPageActorFetching } = useActor();
 
   const { data: allData, isLoading } = useGetAllBantuanPenerima();
   const { data: allVictims = [] } = useGetAllDisasterVictims();
@@ -1022,6 +1048,13 @@ export default function PenerimaBantuanPage() {
   };
 
   const handleInitSampleData = async () => {
+    if (!pageActor || isPageActorFetching || !isAdminInitReady) {
+      toast.error(
+        "Sistem sedang memuat, harap tunggu sebentar lalu coba lagi.",
+      );
+      return;
+    }
+
     const principal = identity?.getPrincipal();
     setIsInitingData(true);
     let successCount = 0;
@@ -1039,7 +1072,8 @@ export default function PenerimaBantuanPage() {
             updatedDate: now,
           });
           successCount++;
-        } catch {
+        } catch (itemErr) {
+          console.error("addBantuanPenerima (sample) error:", itemErr);
           failCount++;
         }
       }
@@ -1051,12 +1085,13 @@ export default function PenerimaBantuanPage() {
         );
       } else {
         toast.error(
-          "Gagal menginisialisasi data sampel. Pastikan koneksi internet stabil.",
+          "Gagal menginisialisasi data sampel. Pastikan sudah login sebagai admin.",
         );
       }
-    } catch {
+    } catch (err) {
+      console.error("handleInitSampleData error:", err);
       toast.error(
-        "Gagal menginisialisasi data sampel. Pastikan koneksi internet stabil.",
+        "Gagal menginisialisasi data sampel. Pastikan sudah login sebagai admin.",
       );
     } finally {
       setIsInitingData(false);
@@ -1100,16 +1135,27 @@ export default function PenerimaBantuanPage() {
                   {isAdmin && (
                     <Button
                       onClick={handleInitSampleData}
-                      disabled={isInitingData}
+                      disabled={
+                        isInitingData ||
+                        isPageActorFetching ||
+                        !pageActor ||
+                        !isAdminInitReady
+                      }
                       variant="outline"
                       className="border-white/30 bg-white/10 text-white hover:bg-white/20 gap-2 font-medium"
                     >
-                      {isInitingData ? (
+                      {isInitingData ||
+                      isPageActorFetching ||
+                      !isAdminInitReady ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
                         <Database className="w-4 h-4" />
                       )}
-                      {isInitingData ? "Memuat..." : "Init Data Sampel"}
+                      {isInitingData
+                        ? "Memuat..."
+                        : !isAdminInitReady
+                          ? "Menginisialisasi..."
+                          : "Init Data Sampel"}
                     </Button>
                   )}
                   <Button
@@ -1396,6 +1442,7 @@ export default function PenerimaBantuanPage() {
         isAdminOrValidator={!!isAdminOrValidator}
         prefillVictim={prefillVictim}
         victims={allVictims}
+        isAdminReady={isAdminInitReady}
       />
 
       {/* Status Update Dialog */}
