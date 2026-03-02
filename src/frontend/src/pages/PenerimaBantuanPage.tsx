@@ -74,7 +74,6 @@ import { toast } from "sonner";
 import type { BantuanPenerima, DisasterVictim } from "../backend.d";
 import { useActor } from "../hooks/useActor";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
-import { usePasswordAdminInit } from "../hooks/usePasswordAdminInit";
 import {
   useAddBantuanPenerima,
   useDeleteBantuanPenerima,
@@ -86,7 +85,6 @@ import {
   useUpdateBantuanPenerimaStatus,
 } from "../hooks/useQueries";
 import { formatDateId, newBigIntId } from "../utils/format";
-import { getSecretParameter } from "../utils/urlParams";
 
 // ─── Types & Constants ────────────────────────────────────────────────────────
 
@@ -355,7 +353,6 @@ function BantuanFormDialog({
   isAdminOrValidator,
   prefillVictim,
   victims,
-  isAdminReady,
 }: {
   editing: BantuanPenerima | null;
   open: boolean;
@@ -363,7 +360,6 @@ function BantuanFormDialog({
   isAdminOrValidator: boolean;
   prefillVictim?: DisasterVictim | null;
   victims: DisasterVictim[];
-  isAdminReady: boolean;
 }) {
   const [form, setForm] = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM });
   const [selectedVictim, setSelectedVictim] = useState<DisasterVictim | null>(
@@ -455,18 +451,6 @@ function BantuanFormDialog({
         "Sistem sedang memuat, harap tunggu sebentar lalu coba lagi.",
       );
       return;
-    }
-
-    // Re-init access control for password admin sessions before every write
-    const isPasswordAdmin =
-      sessionStorage.getItem("admin_panel_auth") === "true";
-    if (isPasswordAdmin && actor) {
-      const adminToken = getSecretParameter("caffeineAdminToken") || "";
-      try {
-        await actor._initializeAccessControlWithSecret(adminToken);
-      } catch (e) {
-        console.warn("re-init access control failed", e);
-      }
     }
 
     const principal = identity?.getPrincipal();
@@ -724,17 +708,13 @@ function BantuanFormDialog({
               addBantuan.isPending ||
               updateBantuan.isPending ||
               isActorFetching ||
-              !actor ||
-              (sessionStorage.getItem("admin_panel_auth") === "true" &&
-                !isAdminReady)
+              !actor
             }
             className="bg-primary text-white gap-2"
           >
             {(addBantuan.isPending ||
               updateBantuan.isPending ||
-              isActorFetching ||
-              (sessionStorage.getItem("admin_panel_auth") === "true" &&
-                !isAdminReady)) && <Loader2 className="w-4 h-4 animate-spin" />}
+              isActorFetching) && <Loader2 className="w-4 h-4 animate-spin" />}
             {editing ? "Perbarui Data" : "Tambah Data"}
           </Button>
         </DialogFooter>
@@ -972,13 +952,6 @@ export default function PenerimaBantuanPage() {
   );
   const [isInitingData, setIsInitingData] = useState(false);
 
-  // Initialize access control for password-admin sessions (no Internet Identity).
-  // Wait until initialization is done before allowing submit.
-  const { isReady: isAdminInitReady } = usePasswordAdminInit();
-
-  // Check if user is authenticated via password-based admin panel
-  const isPasswordAdmin = sessionStorage.getItem("admin_panel_auth") === "true";
-
   const { actor: pageActor, isFetching: isPageActorFetching } = useActor();
 
   const { data: allData, isLoading } = useGetAllBantuanPenerima();
@@ -989,9 +962,8 @@ export default function PenerimaBantuanPage() {
   const addBantuanInit = useAddBantuanPenerima();
   const { identity } = useInternetIdentity();
 
-  // Combine both auth methods
-  const isAdminOrValidator = isPasswordAdmin || !!isAdminOrValidatorICP;
-  const isAdmin = isPasswordAdmin || !!isAdminICP;
+  const isAdminOrValidator = !!isAdminOrValidatorICP;
+  const isAdmin = !!isAdminICP;
 
   // Check URL params for prefill victim (set by ValidasiPage)
   useEffect(() => {
@@ -1068,16 +1040,6 @@ export default function PenerimaBantuanPage() {
         "Sistem sedang memuat, harap tunggu sebentar lalu coba lagi.",
       );
       return;
-    }
-
-    // Re-init access control for password admin sessions before every write
-    if (isPasswordAdmin && pageActor) {
-      const adminToken = getSecretParameter("caffeineAdminToken") || "";
-      try {
-        await pageActor._initializeAccessControlWithSecret(adminToken);
-      } catch (e) {
-        console.warn("re-init access control failed", e);
-      }
     }
 
     const principal = identity?.getPrincipal();
@@ -1161,26 +1123,17 @@ export default function PenerimaBantuanPage() {
                     <Button
                       onClick={handleInitSampleData}
                       disabled={
-                        isInitingData ||
-                        isPageActorFetching ||
-                        !pageActor ||
-                        (isPasswordAdmin && !isAdminInitReady)
+                        isInitingData || isPageActorFetching || !pageActor
                       }
                       variant="outline"
                       className="border-white/30 bg-white/10 text-white hover:bg-white/20 gap-2 font-medium"
                     >
-                      {isInitingData ||
-                      isPageActorFetching ||
-                      (isPasswordAdmin && !isAdminInitReady) ? (
+                      {isInitingData || isPageActorFetching ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
                         <Database className="w-4 h-4" />
                       )}
-                      {isInitingData
-                        ? "Memuat..."
-                        : isPasswordAdmin && !isAdminInitReady
-                          ? "Menginisialisasi..."
-                          : "Init Data Sampel"}
+                      {isInitingData ? "Memuat..." : "Init Data Sampel"}
                     </Button>
                   )}
                   <Button
@@ -1467,7 +1420,6 @@ export default function PenerimaBantuanPage() {
         isAdminOrValidator={!!isAdminOrValidator}
         prefillVictim={prefillVictim}
         victims={allVictims}
-        isAdminReady={isAdminInitReady}
       />
 
       {/* Status Update Dialog */}

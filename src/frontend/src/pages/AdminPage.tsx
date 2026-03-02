@@ -76,8 +76,11 @@ import {
   DistributionStatusBadge,
   ReportStatusBadge,
 } from "../components/StatusBadge";
+import { useActor } from "../hooks/useActor";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useAddAidRecipient,
+  useAddBantuanPenerima,
   useAddFooterLink,
   useAddPublication,
   useAddReport,
@@ -87,6 +90,7 @@ import {
   useDeleteFooterLink,
   useDeletePublication,
   useGetAllAidRecipients,
+  useGetAllBantuanPenerima,
   useGetAllPublications,
   useGetAllReports,
   useGetAllUsers,
@@ -101,13 +105,168 @@ import {
   useUpdatePublication,
   useUpdateReportStatus,
 } from "../hooks/useQueries";
-import { useGetAllBantuanPenerima } from "../hooks/useQueries";
 import {
   formatCurrency,
   formatDateId,
   getAidTypeLabel,
   newBigIntId,
 } from "../utils/format";
+
+// ─── Sample Data Bantuan Penerima (data dari berbagai provinsi Indonesia) ─────
+
+const SAMPLE_BANTUAN_ADMIN = [
+  {
+    nik: "3175010101010001",
+    nama: "Budi Santoso",
+    alamat:
+      "Jl. Mawar No. 5, RT 03/RW 02, Kel. Cempaka Putih, Kec. Cempaka Putih, Jakarta Pusat",
+    keperluanBantuan:
+      "Perbaikan rumah rusak berat akibat banjir, kebutuhan logistik harian, dan peralatan dapur",
+    keterangan:
+      "Korban banjir 2024, rumah terendam 1,5 meter selama 2 hari. Kepala keluarga dengan 4 anggota",
+    prosesTindakLanjut:
+      "Tim BPBD sudah survey lokasi, sedang menunggu anggaran rehab rumah",
+    instansiPembantu: "BPBD DKI Jakarta",
+    validasiStatus: "diproses",
+    tindakLanjutKeterangan:
+      "Sudah diverifikasi tim lapangan, menunggu SK penetapan penerima bantuan",
+  },
+  {
+    nik: "3578020202020002",
+    nama: "Siti Aminah",
+    alamat:
+      "Perum Griya Indah Blok B No. 12, Kel. Wonorejo, Kec. Rungkut, Kota Surabaya",
+    keperluanBantuan:
+      "Bantuan hunian sementara, pakaian layak pakai, dan kebutuhan balita",
+    keterangan:
+      "Ibu dengan 3 anak balita, suami meninggal akibat bencana angin puting beliung. Rumah roboh",
+    prosesTindakLanjut:
+      "Ditempatkan di hunian sementara, menunggu proses pembangunan hunian tetap",
+    instansiPembantu: "Dinas Sosial Kota Surabaya",
+    validasiStatus: "ditindaklanjuti",
+    tindakLanjutKeterangan:
+      "Sudah menerima bantuan tahap 1, proses pengajuan bantuan tahap 2",
+  },
+  {
+    nik: "6471030303030003",
+    nama: "Hendra Wijaya",
+    alamat:
+      "Jl. Panglima Batur RT 08/RW 04, Kel. Bontang Selatan, Kec. Bontang Selatan, Kota Bontang",
+    keperluanBantuan:
+      "Modal usaha nelayan untuk memulai kembali, alat tangkap ikan, dan perahu pengganti",
+    keterangan:
+      "Nelayan yang kehilangan perahu dan alat tangkap akibat kebakaran lahan. 6 anggota keluarga",
+    prosesTindakLanjut: "Menunggu verifikasi dari Dinas Kelautan dan Perikanan",
+    instansiPembantu: "Dinas Kelautan dan Perikanan Bontang",
+    validasiStatus: "baru",
+    tindakLanjutKeterangan: "",
+  },
+  {
+    nik: "7371040404040004",
+    nama: "Maria Goretti",
+    alamat: "Jl. Sam Ratulangi No. 22, Kel. Tikala, Kec. Tikala, Kota Manado",
+    keperluanBantuan:
+      "Renovasi rumah rusak sedang akibat gempa, perlengkapan rumah tangga, dan sembako",
+    keterangan:
+      "Janda lansia 72 tahun, tinggal sendiri. Rumah rusak sedang akibat gempa Sulawesi Utara",
+    prosesTindakLanjut:
+      "Tim relawan RTIK sudah survey, data dilaporkan ke BNPB",
+    instansiPembantu: "Relawan TIK Indonesia",
+    validasiStatus: "diproses",
+    tindakLanjutKeterangan:
+      "Data terverifikasi, menunggu SK penerima bantuan dari BNPB",
+  },
+  {
+    nik: "8171050505050005",
+    nama: "Ahmad Yusuf",
+    alamat: "Jl. Pattimura No. 8, Kel. Batu Merah, Kec. Sirimau, Kota Ambon",
+    keperluanBantuan:
+      "Perbaikan atap rumah rusak berat, kebutuhan sanitasi dan air bersih, sembako",
+    keterangan:
+      "Kepala keluarga dengan 7 anggota, petani yang lahannya terdampak longsor. Rumah rusak berat",
+    prosesTindakLanjut:
+      "Koordinasi dengan Dinas PUPR Maluku dan Kementerian PUPR",
+    instansiPembantu: "BPBD Provinsi Maluku",
+    validasiStatus: "ditindaklanjuti",
+    tindakLanjutKeterangan:
+      "Bantuan perbaikan atap selesai, bantuan lahan pertanian dalam proses",
+  },
+  {
+    nik: "5171060606060006",
+    nama: "Rina Agustina",
+    alamat:
+      "Jl. Diponegoro No. 45, Kel. Kayu Bunga, Kec. Pontianak Utara, Kota Pontianak",
+    keperluanBantuan:
+      "Pakaian layak pakai, kebutuhan sekolah anak, dan perbaikan perabot rumah",
+    keterangan:
+      "Ibu rumah tangga dengan 4 anak, suami cacat. Rumah terdampak banjir luapan Sungai Kapuas",
+    prosesTindakLanjut: "Menunggu validasi dari Dinas Sosial Kalimantan Barat",
+    instansiPembantu: "Dinas Sosial Kota Pontianak",
+    validasiStatus: "baru",
+    tindakLanjutKeterangan: "",
+  },
+  {
+    nik: "1871070707070007",
+    nama: "Putu Gede Wirawan",
+    alamat:
+      "Banjar Dinas Pekutatan No. 12, Desa Pekutatan, Kec. Pekutatan, Kab. Jembrana",
+    keperluanBantuan:
+      "Perbaikan rumah rusak akibat angin kencang, modal usaha tani, dan bibit unggul",
+    keterangan:
+      "Petani yang sawahnya gagal panen akibat kekeringan. Rumah rusak ringan terkena angin",
+    prosesTindakLanjut:
+      "Dinas Pertanian Bali sudah survey lahan, pengajuan bantuan bibit dalam proses",
+    instansiPembantu: "Dinas Pertanian Kabupaten Jembrana",
+    validasiStatus: "diproses",
+    tindakLanjutKeterangan:
+      "Survey selesai, menunggu pencairan dana bantuan bibit",
+  },
+  {
+    nik: "9471080808080008",
+    nama: "Fransiskus Wea",
+    alamat: "Desa Mbay, Kec. Aesesa, Kab. Nagekeo, NTT",
+    keperluanBantuan:
+      "Bantuan pangan darurat, air bersih, dan obat-obatan untuk keluarga terdampak banjir bandang",
+    keterangan:
+      "Korban banjir bandang di NTT. 5 anggota keluarga, satu anak balita butuh penanganan medis",
+    prosesTindakLanjut:
+      "Tim medis dari Puskesmas Mbay sudah memberikan penanganan darurat",
+    instansiPembantu: "Puskesmas Mbay dan PMI NTT",
+    validasiStatus: "ditindaklanjuti",
+    tindakLanjutKeterangan:
+      "Penanganan darurat selesai, dalam pemantauan lanjutan",
+  },
+  {
+    nik: "1601090909090009",
+    nama: "Dewi Rahayu",
+    alamat:
+      "Jl. Bukit Besar No. 33, Kel. Ilir Barat I, Kec. Ilir Barat I, Kota Palembang",
+    keperluanBantuan:
+      "Perbaikan rumah panggung rusak akibat banjir rob, perabotan rumah, dan sembako",
+    keterangan:
+      "Janda dengan 2 anak, tinggal di rumah panggung di tepi sungai Musi yang sering banjir",
+    prosesTindakLanjut:
+      "Tim BPBD Sumsel sudah lakukan assessment, laporan sedang diproses",
+    instansiPembantu: "BPBD Kota Palembang",
+    validasiStatus: "baru",
+    tindakLanjutKeterangan: "",
+  },
+  {
+    nik: "9101101010101010",
+    nama: "Yohanes Kaburei",
+    alamat: "Jl. Koti No. 7, Kel. Entrop, Kec. Jayapura Selatan, Kota Jayapura",
+    keperluanBantuan:
+      "Perbaikan rumah rusak berat akibat tanah longsor, alat pertanian, dan bibit tanaman",
+    keterangan:
+      "Petani yang rumah dan lahannya tertimbun longsoran. Kepala keluarga 8 jiwa",
+    prosesTindakLanjut:
+      "BPBD Papua sudah evakuasi dan data sedang diproses untuk bantuan jangka panjang",
+    instansiPembantu: "BPBD Kota Jayapura",
+    validasiStatus: "diproses",
+    tindakLanjutKeterangan:
+      "Keluarga sudah di pengungsian sementara, menunggu dana rekonstruksi",
+  },
+];
 
 // ─── Empty form defaults ──────────────────────────────────────────────────────
 
@@ -2189,12 +2348,72 @@ function BantuanPenerimaSummaryTab() {
 export default function AdminPage() {
   const { data: isAdmin, isLoading: checkingAdmin } = useIsCallerAdmin();
   const initSampleData = useInitializeSampleData();
+  const addBantuanInit = useAddBantuanPenerima();
+  const { data: existingBantuan } = useGetAllBantuanPenerima();
+  const [isInitingBantuan, setIsInitingBantuan] = useState(false);
+  const { actor, isFetching: isActorFetching } = useActor();
+  const { identity } = useInternetIdentity();
 
   const handleInitSampleData = async () => {
+    if (!actor || isActorFetching) {
+      toast.error(
+        "Sistem sedang memuat, harap tunggu sebentar lalu coba lagi.",
+      );
+      return;
+    }
+
+    let aidSuccess = false;
+    let bantuanSuccess = false;
+
+    // 1. Init Aid Recipients data (backend default sample)
     try {
       await initSampleData.mutateAsync();
-      toast.success("Data sampel berhasil diinisialisasi");
+      aidSuccess = true;
     } catch {
+      // silent fail, may already be initialized
+    }
+
+    // 2. Init Bantuan Penerima sample data if not already present
+    const existingCount = existingBantuan?.length ?? 0;
+    if (existingCount === 0) {
+      setIsInitingBantuan(true);
+      let count = 0;
+      try {
+        const { Principal } = await import("@icp-sdk/core/principal");
+        const principal = identity?.getPrincipal();
+        const creatorPrincipal: Principal = principal ?? Principal.anonymous();
+        const now = BigInt(Date.now());
+        for (const item of SAMPLE_BANTUAN_ADMIN) {
+          try {
+            await addBantuanInit.mutateAsync({
+              id: newBigIntId(),
+              ...item,
+              createdBy: creatorPrincipal,
+              createdDate: now,
+              updatedDate: now,
+            });
+            count++;
+          } catch (e) {
+            console.warn("sample bantuan item failed:", e);
+          }
+        }
+        if (count > 0) bantuanSuccess = true;
+      } catch (e) {
+        console.error("init bantuan sample error:", e);
+      } finally {
+        setIsInitingBantuan(false);
+      }
+    } else {
+      bantuanSuccess = true; // already has data
+    }
+
+    if (aidSuccess || bantuanSuccess) {
+      const parts: string[] = [];
+      if (aidSuccess) parts.push("data Aid Recipients");
+      if (bantuanSuccess && existingCount === 0)
+        parts.push("10 data Penerima Bantuan Bencana");
+      toast.success(`Data sampel berhasil: ${parts.join(" & ")}`);
+    } else {
       toast.error("Gagal menginisialisasi data sampel");
     }
   };
@@ -2258,16 +2477,29 @@ export default function AdminPage() {
             </div>
             <Button
               onClick={handleInitSampleData}
-              disabled={initSampleData.isPending}
+              disabled={
+                initSampleData.isPending ||
+                isInitingBantuan ||
+                isActorFetching ||
+                !actor
+              }
               variant="outline"
               className="border-white/20 text-white bg-white/10 hover:bg-white/20 gap-2 flex-shrink-0"
             >
-              {initSampleData.isPending ? (
+              {initSampleData.isPending ||
+              isInitingBantuan ||
+              isActorFetching ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <RefreshCw className="w-4 h-4" />
               )}
-              <span className="hidden sm:inline">Init Data Sampel</span>
+              <span className="hidden sm:inline">
+                {isInitingBantuan
+                  ? "Memuat Data..."
+                  : isActorFetching
+                    ? "Memuat..."
+                    : "Init Data Sampel"}
+              </span>
             </Button>
           </motion.div>
         </div>
