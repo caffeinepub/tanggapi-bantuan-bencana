@@ -575,31 +575,31 @@ export default function RekapPage() {
             </div>
 
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="w-full">
                 <TableHeader>
                   <TableRow className="bg-navy hover:bg-navy">
-                    <TableHead className="text-white w-10 font-semibold">
+                    <TableHead className="text-white w-10 min-w-[40px] font-semibold whitespace-nowrap">
                       No.
                     </TableHead>
-                    <TableHead className="text-white font-semibold">
+                    <TableHead className="text-white font-semibold min-w-[140px] whitespace-nowrap">
                       Nama / NIK
                     </TableHead>
-                    <TableHead className="text-white font-semibold">
+                    <TableHead className="text-white font-semibold min-w-[180px] max-w-[200px] whitespace-nowrap">
                       Alamat
                     </TableHead>
-                    <TableHead className="text-white font-semibold">
+                    <TableHead className="text-white font-semibold min-w-[160px] max-w-[200px] whitespace-nowrap">
                       Keperluan Bantuan
                     </TableHead>
-                    <TableHead className="text-white font-semibold whitespace-nowrap">
+                    <TableHead className="text-white font-semibold min-w-[120px] whitespace-nowrap">
                       Status
                     </TableHead>
-                    <TableHead className="text-white font-semibold">
+                    <TableHead className="text-white font-semibold min-w-[130px] whitespace-nowrap">
                       Instansi Pembantu
                     </TableHead>
-                    <TableHead className="text-white font-semibold">
+                    <TableHead className="text-white font-semibold min-w-[160px] max-w-[200px] whitespace-nowrap">
                       Ket. Tindak Lanjut
                     </TableHead>
-                    <TableHead className="text-white font-semibold whitespace-nowrap">
+                    <TableHead className="text-white font-semibold min-w-[90px] whitespace-nowrap">
                       Tgl. Input
                     </TableHead>
                   </TableRow>
@@ -624,35 +624,35 @@ export default function RekapPage() {
                             index % 2 === 1 ? "bg-secondary/10" : ""
                           }`}
                         >
-                          <TableCell className="text-sm text-muted-foreground font-medium text-center">
+                          <TableCell className="text-sm text-muted-foreground font-medium text-center w-10 min-w-[40px]">
                             {index + 1}
                           </TableCell>
-                          <TableCell>
-                            <p className="font-semibold text-sm text-foreground">
+                          <TableCell className="min-w-[140px]">
+                            <p className="font-semibold text-sm text-foreground whitespace-normal">
                               {item.nama}
                             </p>
-                            <p className="text-xs text-muted-foreground font-mono mt-0.5">
+                            <p className="text-xs text-muted-foreground font-mono mt-0.5 whitespace-nowrap">
                               {item.nik}
                             </p>
                           </TableCell>
-                          <TableCell>
-                            <p className="text-sm text-muted-foreground max-w-[200px]">
+                          <TableCell className="min-w-[180px] max-w-[200px]">
+                            <p className="text-sm text-muted-foreground whitespace-normal break-words line-clamp-2 leading-snug">
                               {item.alamat || "-"}
                             </p>
                           </TableCell>
-                          <TableCell>
-                            <p className="text-sm text-foreground max-w-[200px] line-clamp-3">
+                          <TableCell className="min-w-[160px] max-w-[200px]">
+                            <p className="text-sm text-foreground whitespace-normal break-words line-clamp-2 leading-snug">
                               {item.keperluanBantuan || "-"}
                             </p>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="min-w-[120px]">
                             <StatusBadge status={item.validasiStatus} />
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="min-w-[130px]">
                             {item.instansiPembantu ? (
                               <div className="flex items-start gap-1.5">
                                 <Building2 className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5 print:hidden" />
-                                <p className="text-sm text-foreground">
+                                <p className="text-sm text-foreground max-w-[130px] break-words whitespace-normal">
                                   {item.instansiPembantu}
                                 </p>
                               </div>
@@ -662,14 +662,14 @@ export default function RekapPage() {
                               </span>
                             )}
                           </TableCell>
-                          <TableCell>
-                            <p className="text-sm text-muted-foreground max-w-[180px] line-clamp-3">
+                          <TableCell className="min-w-[160px] max-w-[200px]">
+                            <p className="text-sm text-muted-foreground whitespace-normal break-words line-clamp-2 leading-snug">
                               {item.tindakLanjutKeterangan ||
                                 item.prosesTindakLanjut ||
                                 "-"}
                             </p>
                           </TableCell>
-                          <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                          <TableCell className="text-sm text-muted-foreground whitespace-nowrap min-w-[90px]">
                             {formatDateId(item.createdDate)}
                           </TableCell>
                         </TableRow>
