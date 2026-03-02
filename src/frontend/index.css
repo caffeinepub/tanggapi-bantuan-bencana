@@ -1,0 +1,185 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Plus Jakarta Sans - Body */
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/assets/fonts/PlusJakartaSans[wght].woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Bricolage Grotesque - Display */
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("/assets/fonts/BricolageGrotesque[opsz,wdth,wght].woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    --radius: 0.5rem;
+
+    /* TANGGAPI Civic Design System - Deep Teal + Warm Amber */
+    /* Primary: deep teal */
+    --background: 0.97 0.008 220;
+    --foreground: 0.18 0.04 240;
+
+    --card: 1 0 0;
+    --card-foreground: 0.18 0.04 240;
+
+    --popover: 1 0 0;
+    --popover-foreground: 0.18 0.04 240;
+
+    /* Primary: deep navy teal */
+    --primary: 0.32 0.085 228;
+    --primary-foreground: 0.98 0 0;
+
+    /* Secondary: mid teal */
+    --secondary: 0.92 0.02 220;
+    --secondary-foreground: 0.25 0.07 228;
+
+    --muted: 0.93 0.012 220;
+    --muted-foreground: 0.52 0.025 225;
+
+    /* Accent: warm gold/amber */
+    --accent: 0.94 0.04 80;
+    --accent-foreground: 0.25 0.06 60;
+
+    --destructive: 0.577 0.245 27.325;
+    --destructive-foreground: 0.985 0 0;
+
+    --border: 0.88 0.015 220;
+    --input: 0.88 0.015 220;
+    --ring: 0.45 0.09 228;
+
+    /* Chart colors: teal, blue, amber, orange, green */
+    --chart-1: 0.50 0.13 210;
+    --chart-2: 0.60 0.12 185;
+    --chart-3: 0.75 0.16 85;
+    --chart-4: 0.65 0.18 50;
+    --chart-5: 0.58 0.13 152;
+
+    --sidebar: 0.22 0.065 228;
+    --sidebar-foreground: 0.95 0.01 210;
+    --sidebar-primary: 0.75 0.14 85;
+    --sidebar-primary-foreground: 0.15 0.06 228;
+    --sidebar-accent: 0.30 0.075 228;
+    --sidebar-accent-foreground: 0.95 0.01 210;
+    --sidebar-border: 0.30 0.06 228;
+    --sidebar-ring: 0.55 0.12 210;
+
+    /* Custom tokens */
+    --navy: 0.22 0.065 228;
+    --navy-dark: 0.16 0.055 232;
+    --teal: 0.48 0.11 205;
+    --teal-light: 0.72 0.10 200;
+    --gold: 0.78 0.18 75;
+    --gold-light: 0.90 0.10 85;
+
+    /* Status colors */
+    --status-menunggu: 0.80 0.18 85;
+    --status-diproses: 0.58 0.14 230;
+    --status-didistribusikan: 0.65 0.16 150;
+
+    /* Topic badge colors */
+    --topic-bencana: 0.60 0.20 30;
+    --topic-bantuan: 0.58 0.14 230;
+    --topic-pengungsian: 0.65 0.18 290;
+    --topic-infrastruktur: 0.52 0.12 185;
+    --topic-kesehatan: 0.62 0.17 150;
+    --topic-lainnya: 0.58 0.05 240;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Plus Jakarta Sans", sans-serif;
+    font-feature-settings: "cv11", "ss01";
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: "Bricolage Grotesque", sans-serif;
+  }
+}
+
+/* Custom utility classes */
+@layer utilities {
+  .font-display {
+    font-family: "Bricolage Grotesque", sans-serif;
+  }
+
+  .font-body {
+    font-family: "Plus Jakarta Sans", sans-serif;
+  }
+
+  .bg-navy {
+    background-color: oklch(var(--navy));
+  }
+
+  .bg-navy-dark {
+    background-color: oklch(var(--navy-dark));
+  }
+
+  .text-navy {
+    color: oklch(var(--navy));
+  }
+
+  .bg-teal {
+    background-color: oklch(var(--teal));
+  }
+
+  .text-teal {
+    color: oklch(var(--teal));
+  }
+
+  .bg-gold {
+    background-color: oklch(var(--gold));
+  }
+
+  .text-gold {
+    color: oklch(var(--gold));
+  }
+
+  .status-menunggu {
+    background-color: oklch(var(--status-menunggu) / 0.15);
+    color: oklch(var(--status-menunggu));
+    border-color: oklch(var(--status-menunggu) / 0.3);
+  }
+
+  .status-diproses {
+    background-color: oklch(var(--status-diproses) / 0.15);
+    color: oklch(var(--status-diproses));
+    border-color: oklch(var(--status-diproses) / 0.3);
+  }
+
+  .status-didistribusikan {
+    background-color: oklch(var(--status-didistribusikan) / 0.15);
+    color: oklch(var(--status-didistribusikan));
+    border-color: oklch(var(--status-didistribusikan) / 0.3);
+  }
+
+  .hero-pattern {
+    background-image:
+      radial-gradient(circle at 20% 50%, oklch(0.45 0.11 205 / 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, oklch(0.75 0.14 85 / 0.1) 0%, transparent 40%),
+      radial-gradient(circle at 60% 80%, oklch(0.48 0.11 205 / 0.08) 0%, transparent 40%);
+  }
+
+  .glass-card {
+    backdrop-filter: blur(12px);
+    background: oklch(1 0 0 / 0.08);
+    border: 1px solid oklch(1 0 0 / 0.15);
+  }
+
+  .section-pattern {
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23134e7c' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+}
