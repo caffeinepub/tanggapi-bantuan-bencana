@@ -409,9 +409,6 @@ export default function BerandaPage() {
               <h3 className="font-display font-bold text-xl mb-1">
                 Peta Sebaran
               </h3>
-              <p className="text-white/70 text-sm">
-                Lihat sebaran penerima bantuan per kabupaten
-              </p>
             </div>
             <ChevronRight className="w-6 h-6 text-white/50 group-hover:text-white transition-colors" />
           </Link>

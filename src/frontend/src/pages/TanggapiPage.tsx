@@ -31,7 +31,6 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { Report } from "../backend.d";
 import { ReportStatusBadge, TopicBadge } from "../components/StatusBadge";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useAddReport, useGetAllReports } from "../hooks/useQueries";
 import { formatDateId, newBigIntId, truncateText } from "../utils/format";
 
@@ -77,7 +76,6 @@ export default function TanggapiPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [form, setForm] = useState<ReportFormData>(EMPTY_FORM);
 
-  const { identity, login } = useInternetIdentity();
   const { data: reports, isLoading } = useGetAllReports();
   const addReport = useAddReport();
 
@@ -101,22 +99,10 @@ export default function TanggapiPage() {
   }, [reports, activeTopic, sortOrder]);
 
   const openForm = () => {
-    if (!identity) {
-      toast.info("Silakan masuk terlebih dahulu untuk mengirim laporan");
-      login();
-      return;
-    }
     setIsFormOpen(true);
   };
 
   const handleSubmit = async () => {
-    if (!identity) {
-      toast.info("Silakan masuk terlebih dahulu untuk mengirim laporan");
-      login();
-      setIsFormOpen(false);
-      return;
-    }
-
     if (
       !form.title.trim() ||
       !form.reporterName.trim() ||

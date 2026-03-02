@@ -8,6 +8,7 @@ import BerandaPage from "./pages/BerandaPage";
 import PenerimaBantuanPage from "./pages/PenerimaBantuanPage";
 import PetaPage from "./pages/PetaPage";
 import PublikasiPage from "./pages/PublikasiPage";
+import RekapPage from "./pages/RekapPage";
 import TanggapiPage from "./pages/TanggapiPage";
 import ValidasiPage from "./pages/ValidasiPage";
 
@@ -74,6 +75,12 @@ const adminPanelRoute = createRoute({
   component: AdminPanelPasswordPage,
 });
 
+const rekapRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/rekap",
+  component: RekapPage,
+});
+
 const routeTree = rootRoute.addChildren([
   berandaRoute,
   petaRoute,
@@ -83,6 +90,7 @@ const routeTree = rootRoute.addChildren([
   validasiRoute,
   penerimaBantuanRoute,
   adminPanelRoute,
+  rekapRoute,
 ]);
 
 const router = createRouter({ routeTree });

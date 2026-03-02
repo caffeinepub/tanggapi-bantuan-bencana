@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link, Outlet, useRouter } from "@tanstack/react-router";
 import {
+  BarChart3,
   BookOpen,
   ClipboardCheck,
   HandHeart,
@@ -31,6 +32,7 @@ const navItems = [
   { label: "Tanggapi", path: "/tanggapi", icon: MessageSquare },
   { label: "Publikasi", path: "/publikasi", icon: BookOpen },
   { label: "Penerima Bantuan", path: "/penerima-bantuan", icon: HandHeart },
+  { label: "Rekap", path: "/rekap", icon: BarChart3 },
 ];
 
 export default function Layout() {

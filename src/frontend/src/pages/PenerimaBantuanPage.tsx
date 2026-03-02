@@ -49,6 +49,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { Principal } from "@icp-sdk/core/principal";
 import {
   Building2,
   CheckCircle2,
@@ -442,8 +443,10 @@ function BantuanFormDialog({
       toast.error("Keperluan bantuan wajib diisi");
       return;
     }
+    const isPasswordAdmin =
+      sessionStorage.getItem("admin_panel_auth") === "true";
     const principal = identity?.getPrincipal();
-    if (!principal) {
+    if (!principal && !isPasswordAdmin) {
       toast.error("Silakan login terlebih dahulu untuk menambah data");
       return;
     }
@@ -457,10 +460,12 @@ function BantuanFormDialog({
         });
         toast.success("Data penerima bantuan diperbarui");
       } else {
+        // Use actual principal if available, otherwise use anonymous for password admins
+        const creatorPrincipal: Principal = principal ?? Principal.anonymous();
         await addBantuan.mutateAsync({
           id: newBigIntId(),
           ...form,
-          createdBy: principal,
+          createdBy: creatorPrincipal,
           createdDate: now,
           updatedDate: now,
         });
@@ -935,13 +940,20 @@ export default function PenerimaBantuanPage() {
   );
   const [isInitingData, setIsInitingData] = useState(false);
 
+  // Check if user is authenticated via password-based admin panel
+  const isPasswordAdmin = sessionStorage.getItem("admin_panel_auth") === "true";
+
   const { data: allData, isLoading } = useGetAllBantuanPenerima();
   const { data: allVictims = [] } = useGetAllDisasterVictims();
-  const { data: isAdminOrValidator } = useIsCallerAdminOrValidator();
-  const { data: isAdmin } = useIsCallerAdmin();
+  const { data: isAdminOrValidatorICP } = useIsCallerAdminOrValidator();
+  const { data: isAdminICP } = useIsCallerAdmin();
   const deleteBantuan = useDeleteBantuanPenerima();
   const addBantuanInit = useAddBantuanPenerima();
   const { identity } = useInternetIdentity();
+
+  // Combine both auth methods
+  const isAdminOrValidator = isPasswordAdmin || !!isAdminOrValidatorICP;
+  const isAdmin = isPasswordAdmin || !!isAdminICP;
 
   // Check URL params for prefill victim (set by ValidasiPage)
   useEffect(() => {
@@ -1014,18 +1026,19 @@ export default function PenerimaBantuanPage() {
 
   const handleInitSampleData = async () => {
     const principal = identity?.getPrincipal();
-    if (!principal) {
+    if (!principal && !isPasswordAdmin) {
       toast.error("Silakan login terlebih dahulu");
       return;
     }
     setIsInitingData(true);
     try {
+      const creatorPrincipal: Principal = principal ?? Principal.anonymous();
       const now = BigInt(Date.now());
       for (const item of SAMPLE_BANTUAN_DATA) {
         await addBantuanInit.mutateAsync({
           id: newBigIntId(),
           ...item,
-          createdBy: principal,
+          createdBy: creatorPrincipal,
           createdDate: now,
           updatedDate: now,
         });

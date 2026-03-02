@@ -38,6 +38,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { Principal } from "@icp-sdk/core/principal";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -469,8 +470,10 @@ function DisasterVictimsTab({
       );
       return;
     }
+    const isPasswordAdmin =
+      sessionStorage.getItem("admin_panel_auth") === "true";
     const principal = identity?.getPrincipal();
-    if (!principal) {
+    if (!principal && !isPasswordAdmin) {
       toast.error("Silakan login terlebih dahulu");
       return;
     }
@@ -483,10 +486,11 @@ function DisasterVictimsTab({
         });
         toast.success("Data korban diperbarui");
       } else {
+        const creatorPrincipal: Principal = principal ?? Principal.anonymous();
         await addVictim.mutateAsync({
           ...form,
           id: newBigIntId(),
-          registeredBy: principal,
+          registeredBy: creatorPrincipal,
         });
         toast.success("Data korban ditambahkan");
       }
@@ -976,16 +980,19 @@ function ValidationRecordsTab({
       toast.error("Korban, Jenis Kebutuhan, dan Deskripsi wajib diisi");
       return;
     }
+    const isPasswordAdmin =
+      sessionStorage.getItem("admin_panel_auth") === "true";
     const principal = identity?.getPrincipal();
-    if (!principal) {
+    if (!principal && !isPasswordAdmin) {
       toast.error("Silakan login terlebih dahulu");
       return;
     }
     try {
+      const creatorPrincipal: Principal = principal ?? Principal.anonymous();
       await addRecord.mutateAsync({
         ...addForm,
         id: newBigIntId(),
-        createdBy: principal,
+        createdBy: creatorPrincipal,
         createdDate: BigInt(Date.now()),
       });
       toast.success("Data kebutuhan ditambahkan");
@@ -997,17 +1004,20 @@ function ValidationRecordsTab({
 
   const handleValidateSubmit = async () => {
     if (!editingRecord) return;
+    const isPasswordAdmin =
+      sessionStorage.getItem("admin_panel_auth") === "true";
     const principal = identity?.getPrincipal();
-    if (!principal) {
+    if (!principal && !isPasswordAdmin) {
       toast.error("Silakan login terlebih dahulu");
       return;
     }
     try {
+      const validatorPrincipal: Principal = principal ?? Principal.anonymous();
       await updateStatus.mutateAsync({
         id: editingRecord.id,
         status: validateForm.status,
         notes: validateForm.notes,
-        validatedBy: principal,
+        validatedBy: validatorPrincipal,
       });
       toast.success("Status validasi diperbarui");
       setIsValidateOpen(false);
@@ -1358,14 +1368,21 @@ function ValidationRecordsTab({
 // ─── Validasi Page ─────────────────────────────────────────────────────────────
 
 export default function ValidasiPage() {
-  const { data: isAdminOrValidator, isLoading: checkingAccess } =
+  const { data: isAdminOrValidatorICP, isLoading: checkingAccess } =
     useIsCallerAdminOrValidator();
-  const { data: isAdmin } = useIsCallerAdmin();
+  const { data: isAdminICP } = useIsCallerAdmin();
   const { identity } = useInternetIdentity();
+
+  // Check if user is authenticated via password-based admin panel
+  const isPasswordAdmin = sessionStorage.getItem("admin_panel_auth") === "true";
+
+  // Combine both auth methods
+  const isAdminOrValidator = isPasswordAdmin || !!isAdminOrValidatorICP;
+  const isAdmin = isPasswordAdmin || !!isAdminICP;
 
   const isValidator = !!(isAdminOrValidator && !isAdmin);
 
-  if (checkingAccess) {
+  if (checkingAccess && !isPasswordAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -1376,7 +1393,7 @@ export default function ValidasiPage() {
     );
   }
 
-  if (!identity) {
+  if (!identity && !isPasswordAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background section-pattern">
         <motion.div
