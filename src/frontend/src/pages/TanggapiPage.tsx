@@ -31,13 +31,9 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { Report } from "../backend.d";
 import { ReportStatusBadge, TopicBadge } from "../components/StatusBadge";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useAddReport, useGetAllReports } from "../hooks/useQueries";
-import {
-  formatDateId,
-  getTopicLabel,
-  newBigIntId,
-  truncateText,
-} from "../utils/format";
+import { formatDateId, newBigIntId, truncateText } from "../utils/format";
 
 const TOPICS = [
   { value: "semua", label: "Semua", color: "bg-gray-100 text-gray-600" },
@@ -81,6 +77,7 @@ export default function TanggapiPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [form, setForm] = useState<ReportFormData>(EMPTY_FORM);
 
+  const { identity, login } = useInternetIdentity();
   const { data: reports, isLoading } = useGetAllReports();
   const addReport = useAddReport();
 
@@ -103,7 +100,23 @@ export default function TanggapiPage() {
     });
   }, [reports, activeTopic, sortOrder]);
 
+  const openForm = () => {
+    if (!identity) {
+      toast.info("Silakan masuk terlebih dahulu untuk mengirim laporan");
+      login();
+      return;
+    }
+    setIsFormOpen(true);
+  };
+
   const handleSubmit = async () => {
+    if (!identity) {
+      toast.info("Silakan masuk terlebih dahulu untuk mengirim laporan");
+      login();
+      setIsFormOpen(false);
+      return;
+    }
+
     if (
       !form.title.trim() ||
       !form.reporterName.trim() ||
@@ -158,7 +171,7 @@ export default function TanggapiPage() {
               </div>
             </div>
             <Button
-              onClick={() => setIsFormOpen(true)}
+              onClick={openForm}
               className="flex-shrink-0 bg-gold hover:bg-gold/90 text-white gap-2 shadow-lg"
             >
               <Plus className="w-4 h-4" />
@@ -294,7 +307,7 @@ export default function TanggapiPage() {
                   Jadilah yang pertama menyampaikan laporan
                 </p>
                 <Button
-                  onClick={() => setIsFormOpen(true)}
+                  onClick={openForm}
                   className="bg-primary text-white gap-2"
                 >
                   <Plus className="w-4 h-4" />

@@ -1,7 +1,5 @@
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
 import {
   LayoutGrid,
   List,
@@ -19,17 +17,6 @@ import {
   useGetRecipientsByDistrict,
 } from "../hooks/useQueries";
 import { formatNumber } from "../utils/format";
-
-// Fix leaflet default icon
-// biome-ignore lint/performance/noDelete: required for leaflet icon fix
-// biome-ignore lint/suspicious/noExplicitAny: leaflet internal
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl:
-    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-});
 
 // Koordinat kabupaten/kota di Aceh
 const DISTRICT_COORDS: Record<string, [number, number]> = {
@@ -68,6 +55,44 @@ interface DistrictSummary {
   byStatus: Record<string, number>;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type LeafletLib = any;
+
+function loadLeaflet(): Promise<LeafletLib> {
+  return new Promise((resolve, reject) => {
+    if ((window as unknown as Record<string, unknown>).L) {
+      resolve((window as unknown as Record<string, unknown>).L as LeafletLib);
+      return;
+    }
+    // Load CSS
+    if (!document.querySelector('link[href*="leaflet"]')) {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+      document.head.appendChild(link);
+    }
+    // Load JS
+    const script = document.createElement("script");
+    script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+    script.onload = () => {
+      const L = (window as unknown as Record<string, unknown>).L as LeafletLib;
+      // Fix default icon
+      // biome-ignore lint/performance/noDelete: required for leaflet icon fix
+      delete L.Icon.Default.prototype._getIconUrl;
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl:
+          "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+        iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+        shadowUrl:
+          "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+      });
+      resolve(L);
+    };
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
 function InteractiveMap({
   districts,
   onSelect,
@@ -77,12 +102,22 @@ function InteractiveMap({
   onSelect: (d: DistrictSummary | null) => void;
   selected: DistrictSummary | null;
 }) {
-  const mapRef = useRef<L.Map | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mapRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const markersRef = useRef<L.CircleMarker[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const markersRef = useRef<any[]>([]);
+  const [leafletLoaded, setLeafletLoaded] = useState(false);
 
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
+    loadLeaflet()
+      .then(() => setLeafletLoaded(true))
+      .catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    if (!leafletLoaded || !containerRef.current || mapRef.current) return;
+    const L = (window as unknown as Record<string, unknown>).L as LeafletLib;
 
     const map = L.map(containerRef.current, {
       center: [4.5, 96.5],
@@ -102,11 +137,12 @@ function InteractiveMap({
       map.remove();
       mapRef.current = null;
     };
-  }, []);
+  }, [leafletLoaded]);
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
+    if (!map || !leafletLoaded) return;
+    const L = (window as unknown as Record<string, unknown>).L as LeafletLib;
 
     // Remove old markers
     for (const m of markersRef.current) m.remove();
@@ -146,7 +182,7 @@ function InteractiveMap({
       marker.addTo(map);
       markersRef.current.push(marker);
     }
-  }, [districts, selected, onSelect]);
+  }, [districts, selected, onSelect, leafletLoaded]);
 
   return <div ref={containerRef} style={{ width: "100%", height: "100%" }} />;
 }

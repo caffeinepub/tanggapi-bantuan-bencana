@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Link, Outlet, useRouter } from "@tanstack/react-router";
 import {
   BookOpen,
-  ChevronDown,
+  ClipboardCheck,
+  HandHeart,
   Home,
   LogIn,
   LogOut,
@@ -16,18 +17,26 @@ import {
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
-import { useGetFooterLinks, useIsCallerAdmin } from "../hooks/useQueries";
+import {
+  useGetFooterLinks,
+  useIsCallerAdmin,
+  useIsCallerAdminOrValidator,
+  useIsCallerValidator,
+} from "../hooks/useQueries";
 
 const navItems = [
   { label: "Beranda", path: "/", icon: Home },
   { label: "Peta", path: "/peta", icon: MapPin },
   { label: "Tanggapi", path: "/tanggapi", icon: MessageSquare },
   { label: "Publikasi", path: "/publikasi", icon: BookOpen },
+  { label: "Penerima Bantuan", path: "/penerima-bantuan", icon: HandHeart },
 ];
 
 export default function Layout() {
   const { login, clear, loginStatus, identity } = useInternetIdentity();
   const { data: isAdmin } = useIsCallerAdmin();
+  const { data: isAdminOrValidator } = useIsCallerAdminOrValidator();
+  const { data: isValidator } = useIsCallerValidator();
   const { data: footerLinks } = useGetFooterLinks();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const router = useRouter();
@@ -86,6 +95,20 @@ export default function Layout() {
                 );
               })}
 
+              {isAdminOrValidator && (
+                <Link
+                  to="/validasi"
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                    currentPath.startsWith("/validasi")
+                      ? "bg-emerald-500/20 text-emerald-300"
+                      : "text-white/75 hover:text-white hover:bg-white/10"
+                  }`}
+                >
+                  <ClipboardCheck className="w-4 h-4" />
+                  Validasi Data
+                </Link>
+              )}
+
               <Link
                 to="/admin"
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-all ${
@@ -106,6 +129,11 @@ export default function Layout() {
                   {isAdmin && (
                     <Badge className="bg-gold/20 text-gold border-gold/30 text-xs">
                       ADMIN
+                    </Badge>
+                  )}
+                  {!isAdmin && isValidator && (
+                    <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-xs">
+                      VALIDATOR
                     </Badge>
                   )}
                   <Button
@@ -179,6 +207,26 @@ export default function Layout() {
                     </Link>
                   );
                 })}
+
+                {isAdminOrValidator && (
+                  <Link
+                    to="/validasi"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-md text-sm font-medium transition-all ${
+                      currentPath.startsWith("/validasi")
+                        ? "bg-emerald-500/20 text-emerald-300"
+                        : "text-white/75 hover:text-white hover:bg-white/10"
+                    }`}
+                  >
+                    <ClipboardCheck className="w-4 h-4" />
+                    Validasi Data
+                    {isValidator && !isAdmin && (
+                      <span className="ml-auto text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded-full">
+                        VALIDATOR
+                      </span>
+                    )}
+                  </Link>
+                )}
 
                 <Link
                   to="/admin"

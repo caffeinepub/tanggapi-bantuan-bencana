@@ -1,15 +1,13 @@
 import Map "mo:core/Map";
+import Iter "mo:core/Iter";
+import Nat "mo:core/Nat";
 import Principal "mo:core/Principal";
 import Runtime "mo:core/Runtime";
 import Text "mo:core/Text";
-import Nat "mo:core/Nat";
 import Time "mo:core/Time";
-import Iter "mo:core/Iter";
-
 
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
-
 
 actor {
   // Types
@@ -47,15 +45,82 @@ actor {
     readTime : Nat;
   };
 
-  public type UserProfile = {
-    name : Text;
-  };
-
-  public type FooterLink = {
+  type FooterLink = {
     id : Nat;
     linkLabel : Text;
     url : Text;
     order : Nat;
+  };
+
+  type DashboardStat = {
+    totalRecipients : Nat;
+    recipientsByDistrict : [(Text, Nat)];
+    recipientsByAidType : [(Text, Nat)];
+    recipientsByStatus : [(Text, Nat)];
+    reportsByTopic : [(Text, Nat)];
+    reportsByStatus : [(Text, Nat)];
+  };
+
+  public type UserEntry = {
+    principal : Principal;
+    role : Text;
+  };
+
+  // Validator Types
+  public type DisasterVictim = {
+    id : Nat;
+    nik : Text;
+    fullName : Text;
+    address : Text;
+    rt : Text;
+    rw : Text;
+    kelurahan : Text;
+    kecamatan : Text;
+    kabupaten : Text;
+    disasterType : Text;
+    disasterDate : Int;
+    physicalCondition : Text;
+    damageLevel : Text;
+    lossDescription : Text;
+    registeredBy : Principal;
+    registrationDate : Int;
+  };
+
+  public type ValidationRecord = {
+    id : Nat;
+    victimId : Nat;
+    needType : Text;
+    needDescription : Text;
+    estimatedValue : Nat;
+    validationStatus : Text;
+    validatorNotes : Text;
+    validatedBy : ?Principal;
+    validationDate : ?Int;
+    createdBy : Principal;
+    createdDate : Int;
+  };
+
+  public type ValidationStats = {
+    totalVictims : Nat;
+    byDisasterType : [(Text, Nat)];
+    byValidationStatus : [(Text, Nat)];
+  };
+
+  // NEW TYPE: BantuanPenerima
+  public type BantuanPenerima = {
+    id : Nat;
+    nama : Text;
+    nik : Text;
+    alamat : Text;
+    keperluanBantuan : Text;
+    keterangan : Text;
+    prosesTindakLanjut : Text;
+    instansiPembantu : Text;
+    validasiStatus : Text;
+    tindakLanjutKeterangan : Text;
+    createdBy : Principal;
+    createdDate : Int;
+    updatedDate : Int;
   };
 
   // State
@@ -65,13 +130,22 @@ actor {
   let aidRecipients = Map.empty<Nat, AidRecipient>();
   let reports = Map.empty<Nat, Report>();
   let publications = Map.empty<Nat, Publication>();
-  let userProfiles = Map.empty<Principal, UserProfile>();
+  let userProfiles = Map.empty<Principal, { name : Text }>();
   let footerLinks = Map.empty<Nat, FooterLink>();
+  let disasterVictims = Map.empty<Nat, DisasterVictim>();
+  let validationRecords = Map.empty<Nat, ValidationRecord>();
+  let validatorUsers = Map.empty<Principal, ()>();
+
+  // NEW STATE
+  let bantuanPenerimaMap = Map.empty<Nat, BantuanPenerima>();
+  var nextBantuanPenerimaId = 1;
 
   var nextAidId = 1;
   var nextReportId = 1;
   var nextPublicationId = 1;
   var nextFooterLinkId = 1;
+  var nextVictimId = 1;
+  var nextValidationRecordId = 1;
 
   // Mixins
   include MixinAuthorization(accessControlState);
@@ -125,29 +199,6 @@ actor {
     true;
   };
 
-  // User Profile Management
-  public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view profiles");
-    };
-    userProfiles.get(caller);
-  };
-
-  public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
-    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Can only view your own profile");
-    };
-    userProfiles.get(user);
-  };
-
-  public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can save profiles");
-    };
-    userProfiles.add(caller, profile);
-  };
-
-  // Sample Data Initialization
   public shared ({ caller }) func initializeSampleData() : async () {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
       Runtime.trap("Unauthorized: Only admins can initialize sample data");
@@ -174,27 +225,33 @@ actor {
           url = "https://indonesia.go.id";
           order = 3;
         },
+        {
+          id = nextFooterLinkId + 3;
+          linkLabel = "Kementerian Sosial RI";
+          url = "https://kemensos.go.id";
+          order = 4;
+        },
+        {
+          id = nextFooterLinkId + 4;
+          linkLabel = "Palang Merah Indonesia";
+          url = "https://pmi.or.id";
+          order = 5;
+        },
       ];
 
       for (link in sampleLinks.vals()) {
         footerLinks.add(link.id, link);
       };
-      nextFooterLinkId += 3;
+      nextFooterLinkId += 5;
     };
   };
 
   // Aid Recipients Management
-  public query ({ caller }) func getAllAidRecipients() : async [AidRecipient] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view aid recipients");
-    };
+  public query ({ caller = _ }) func getAllAidRecipients() : async [AidRecipient] {
     aidRecipients.values().toArray();
   };
 
-  public query ({ caller }) func getAidRecipientById(id : Nat) : async ?AidRecipient {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view aid recipients");
-    };
+  public query ({ caller = _ }) func getAidRecipientById(id : Nat) : async ?AidRecipient {
     aidRecipients.get(id);
   };
 
@@ -246,40 +303,28 @@ actor {
     true;
   };
 
-  public query ({ caller }) func filterAidRecipientsByDistrict(district : Text) : async [AidRecipient] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can filter aid recipients");
-    };
+  public query ({ caller = _ }) func filterAidRecipientsByDistrict(district : Text) : async [AidRecipient] {
     let filtered = aidRecipients.values().toArray().filter(
       func(aid : AidRecipient) : Bool { aid.district == district }
     );
     filtered;
   };
 
-  public query ({ caller }) func filterAidRecipientsByType(aidType : Text) : async [AidRecipient] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can filter aid recipients");
-    };
+  public query ({ caller = _ }) func filterAidRecipientsByType(aidType : Text) : async [AidRecipient] {
     let filtered = aidRecipients.values().toArray().filter(
       func(aid : AidRecipient) : Bool { aid.aidType == aidType }
     );
     filtered;
   };
 
-  public query ({ caller }) func filterAidRecipientsByStatus(status : Text) : async [AidRecipient] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can filter aid recipients");
-    };
+  public query ({ caller = _ }) func filterAidRecipientsByStatus(status : Text) : async [AidRecipient] {
     let filtered = aidRecipients.values().toArray().filter(
       func(aid : AidRecipient) : Bool { aid.distributionStatus == status }
     );
     filtered;
   };
 
-  public query ({ caller }) func searchAidRecipients(searchTerm : Text) : async [AidRecipient] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can search aid recipients");
-    };
+  public query ({ caller = _ }) func searchAidRecipients(searchTerm : Text) : async [AidRecipient] {
     let lowerSearchTerm = searchTerm.toLower();
     let filtered = aidRecipients.values().toArray().filter(
       func(aid : AidRecipient) : Bool {
@@ -292,20 +337,15 @@ actor {
 
   // Reports Management
   public query ({ caller = _ }) func getAllReports() : async [Report] {
-    // Public access - anyone can view reports including guests
     reports.values().toArray();
   };
 
   public query ({ caller = _ }) func getReportById(id : Nat) : async ?Report {
-    // Public access - anyone can view reports including guests
     reports.get(id);
   };
 
-  public shared ({ caller }) func addReport(report : Report) : async Nat {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can add reports");
-    };
-
+  public shared ({ caller = _ }) func addReport(report : Report) : async Nat {
+    // Public can add reports
     let newReport = {
       id = nextReportId;
       title = report.title;
@@ -347,8 +387,20 @@ actor {
     };
   };
 
+  public shared ({ caller }) func deleteReport(id : Nat) : async Bool {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can delete reports");
+    };
+
+    if (not (reports.containsKey(id))) {
+      return false;
+    };
+
+    reports.remove(id);
+    true;
+  };
+
   public query ({ caller = _ }) func filterReportsByTopic(topic : Text) : async [Report] {
-    // Public access - anyone can filter reports including guests
     let filtered = reports.values().toArray().filter(
       func(report : Report) : Bool { report.topic == topic }
     );
@@ -356,7 +408,6 @@ actor {
   };
 
   public query ({ caller = _ }) func filterReportsByStatus(status : Text) : async [Report] {
-    // Public access - anyone can filter reports including guests
     let filtered = reports.values().toArray().filter(
       func(report : Report) : Bool { report.status == status }
     );
@@ -365,12 +416,10 @@ actor {
 
   // Publications Management
   public query ({ caller = _ }) func getAllPublications() : async [Publication] {
-    // Public access - anyone can view publications including guests
     publications.values().toArray();
   };
 
   public query ({ caller = _ }) func getPublicationById(id : Nat) : async ?Publication {
-    // Public access - anyone can view publications including guests
     publications.get(id);
   };
 
@@ -421,18 +470,11 @@ actor {
   };
 
   // Dashboard Statistics
-  public query ({ caller }) func getTotalRecipients() : async Nat {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view statistics");
-    };
+  public query ({ caller = _ }) func getTotalRecipients() : async Nat {
     aidRecipients.size();
   };
 
-  public query ({ caller }) func getRecipientsByDistrict() : async [(Text, Nat)] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view statistics");
-    };
-
+  public query ({ caller = _ }) func getRecipientsByDistrict() : async [(Text, Nat)] {
     let districtMap = Map.empty<Text, Nat>();
 
     for (aid in aidRecipients.values()) {
@@ -449,11 +491,7 @@ actor {
     districtMap.toArray();
   };
 
-  public query ({ caller }) func getRecipientsByAidType() : async [(Text, Nat)] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view statistics");
-    };
-
+  public query ({ caller = _ }) func getRecipientsByAidType() : async [(Text, Nat)] {
     let typeMap = Map.empty<Text, Nat>();
 
     for (aid in aidRecipients.values()) {
@@ -470,11 +508,7 @@ actor {
     typeMap.toArray();
   };
 
-  public query ({ caller }) func getRecipientsByStatus() : async [(Text, Nat)] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view statistics");
-    };
-
+  public query ({ caller = _ }) func getRecipientsByStatus() : async [(Text, Nat)] {
     let statusMap = Map.empty<Text, Nat>();
 
     for (aid in aidRecipients.values()) {
@@ -491,11 +525,7 @@ actor {
     statusMap.toArray();
   };
 
-  public query ({ caller }) func getReportsByTopic() : async [(Text, Nat)] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view statistics");
-    };
-
+  public query ({ caller = _ }) func getReportsByTopic() : async [(Text, Nat)] {
     let topicMap = Map.empty<Text, Nat>();
 
     for (report in reports.values()) {
@@ -512,11 +542,7 @@ actor {
     topicMap.toArray();
   };
 
-  public query ({ caller }) func getReportsByStatus() : async [(Text, Nat)] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view statistics");
-    };
-
+  public query ({ caller = _ }) func getReportsByStatus() : async [(Text, Nat)] {
     let statusMap = Map.empty<Text, Nat>();
 
     for (report in reports.values()) {
@@ -532,5 +558,415 @@ actor {
 
     statusMap.toArray();
   };
-};
 
+  // User Management
+  public query ({ caller }) func getCallerUserProfile() : async ?{ name : Text } {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view profiles");
+    };
+    userProfiles.get(caller);
+  };
+
+  public query ({ caller }) func getUserProfile(user : Principal) : async ?{ name : Text } {
+    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Can only view your own profile");
+    };
+    userProfiles.get(user);
+  };
+
+  public shared ({ caller }) func saveCallerUserProfile(profile : { name : Text }) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can save profiles");
+    };
+    userProfiles.add(caller, profile);
+  };
+
+  // Get All Users
+  func roleToText(role : AccessControl.UserRole) : Text {
+    switch (role) {
+      case (#admin) { "admin" };
+      case (#user) { "user" };
+      case (#guest) { "guest" };
+    };
+  };
+
+  public query ({ caller }) func getAllUsers() : async [UserEntry] {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can get all users");
+    };
+
+    let entries = accessControlState.userRoles.toArray();
+    let userEntries = entries.map(
+      func((principal, role) : (Principal, AccessControl.UserRole)) : UserEntry {
+        {
+          principal;
+          role = roleToText(role);
+        };
+      }
+    );
+    userEntries;
+  };
+
+  // VALIDATION (ADMIN + VALIDATOR ROLE)
+  public type ValidatorRole = { #none; #validator; #admin };
+
+  // INTERNAL only, distinguishes admin/validator
+  func getValidatorRole(caller : Principal) : ValidatorRole {
+    if (AccessControl.isAdmin(accessControlState, caller)) {
+      #admin;
+    } else if (validatorUsers.containsKey(caller)) {
+      #validator;
+    } else {
+      #none;
+    };
+  };
+
+  // Check if caller is admin or validator
+  func isAdminOrValidator(caller : Principal) : Bool {
+    AccessControl.isAdmin(accessControlState, caller) or validatorUsers.containsKey(caller);
+  };
+
+  // PUBLIC check for frontend, only distinguishes validator/non-validator
+  public query ({ caller }) func isCallerValidator() : async Bool {
+    validatorUsers.containsKey(caller);
+  };
+
+  // Returns true if caller is admin or validator
+  public query ({ caller }) func isCallerAdminOrValidator() : async Bool {
+    isAdminOrValidator(caller);
+  };
+
+  // DisasterVictim CRUD
+  public query ({ caller = _ }) func getAllDisasterVictims() : async [DisasterVictim] {
+    // Public query
+    disasterVictims.values().toArray();
+  };
+
+  public query ({ caller = _ }) func getDisasterVictimById(id : Nat) : async ?DisasterVictim {
+    // Public query
+    disasterVictims.get(id);
+  };
+
+  public shared ({ caller }) func addDisasterVictim(victim : DisasterVictim) : async Nat {
+    if (not isAdminOrValidator(caller)) {
+      Runtime.trap("Unauthorized: Only admins/validators can add disaster victims");
+    };
+
+    let newVictim : DisasterVictim = {
+      id = nextVictimId;
+      nik = victim.nik;
+      fullName = victim.fullName;
+      address = victim.address;
+      rt = victim.rt;
+      rw = victim.rw;
+      kelurahan = victim.kelurahan;
+      kecamatan = victim.kecamatan;
+      kabupaten = victim.kabupaten;
+      disasterType = victim.disasterType;
+      disasterDate = victim.disasterDate;
+      physicalCondition = victim.physicalCondition;
+      damageLevel = victim.damageLevel;
+      lossDescription = victim.lossDescription;
+      registeredBy = caller;
+      registrationDate = Time.now();
+    };
+
+    disasterVictims.add(nextVictimId, newVictim);
+    nextVictimId += 1;
+    newVictim.id;
+  };
+
+  public shared ({ caller }) func updateDisasterVictim(victim : DisasterVictim) : async Bool {
+    if (not isAdminOrValidator(caller)) {
+      Runtime.trap("Unauthorized: Only admins/validators can update disaster victims");
+    };
+
+    if (not (disasterVictims.containsKey(victim.id))) {
+      return false;
+    };
+
+    disasterVictims.add(victim.id, victim);
+    true;
+  };
+
+  public shared ({ caller }) func deleteDisasterVictim(id : Nat) : async () {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can delete disaster victims");
+    };
+
+    switch (disasterVictims.get(id)) {
+      case (null) {
+        Runtime.trap("Error: Victim not found");
+      };
+      case (?_) {};
+    };
+
+    disasterVictims.remove(id);
+  };
+
+  // ValidationRecord CRUD
+  public query ({ caller }) func getAllValidationRecords() : async [ValidationRecord] {
+    if (not isAdminOrValidator(caller)) {
+      Runtime.trap("Unauthorized: Only admins/validators can view validation records");
+    };
+    validationRecords.values().toArray();
+  };
+
+  public query ({ caller }) func getValidationRecordsByVictim(victimId : Nat) : async [ValidationRecord] {
+    if (not isAdminOrValidator(caller)) {
+      Runtime.trap("Unauthorized: Only admins/validators can view validation records");
+    };
+
+    let filtered = validationRecords.values().toArray().filter(
+      func(record : ValidationRecord) : Bool { record.victimId == victimId }
+    );
+    filtered;
+  };
+
+  public shared ({ caller }) func addValidationRecord(record : ValidationRecord) : async Nat {
+    if (not isAdminOrValidator(caller)) {
+      Runtime.trap("Unauthorized: Only admins/validators can add validation records");
+    };
+
+    let newRecord : ValidationRecord = {
+      id = nextValidationRecordId;
+      victimId = record.victimId;
+      needType = record.needType;
+      needDescription = record.needDescription;
+      estimatedValue = record.estimatedValue;
+      validationStatus = "menunggu";
+      validatorNotes = "";
+      validatedBy = null;
+      validationDate = null;
+      createdBy = caller;
+      createdDate = Time.now();
+    };
+
+    validationRecords.add(nextValidationRecordId, newRecord);
+    nextValidationRecordId += 1;
+    newRecord.id;
+  };
+
+  public shared ({ caller }) func updateValidationRecord(record : ValidationRecord) : async Bool {
+    if (not isAdminOrValidator(caller)) {
+      Runtime.trap("Unauthorized: Only admins/validators can update validation records");
+    };
+
+    if (not (validationRecords.containsKey(record.id))) {
+      return false;
+    };
+
+    validationRecords.add(record.id, record);
+    true;
+  };
+
+  public shared ({ caller }) func updateValidationStatus(
+    id : Nat,
+    status : Text,
+    notes : Text,
+    validatedBy : Principal,
+  ) : async Bool {
+    if (not isAdminOrValidator(caller)) {
+      Runtime.trap("Unauthorized: Only admins/validators can update validation status");
+    };
+
+    switch (validationRecords.get(id)) {
+      case (null) { false };
+      case (?record) {
+        let updatedRecord = {
+          id = record.id;
+          victimId = record.victimId;
+          needType = record.needType;
+          needDescription = record.needDescription;
+          estimatedValue = record.estimatedValue;
+          validationStatus = status;
+          validatorNotes = notes;
+          validatedBy = ?validatedBy;
+          validationDate = ?Time.now();
+          createdBy = record.createdBy;
+          createdDate = record.createdDate;
+        };
+        validationRecords.add(id, updatedRecord);
+        true;
+      };
+    };
+  };
+
+  public shared ({ caller }) func deleteValidationRecord(id : Nat) : async () {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can delete validation records");
+    };
+
+    switch (validationRecords.get(id)) {
+      case (null) {
+        Runtime.trap("Error: Validation record not found");
+      };
+      case (?_) {};
+    };
+
+    validationRecords.remove(id);
+  };
+
+  // Validation Statistics
+  public query ({ caller = _ }) func getValidationStats() : async ValidationStats {
+    // Public query
+    let totalVictims = disasterVictims.size();
+
+    let disasterTypeMap = Map.empty<Text, Nat>();
+    for (victim in disasterVictims.values()) {
+      switch (disasterTypeMap.get(victim.disasterType)) {
+        case (null) {
+          disasterTypeMap.add(victim.disasterType, 1);
+        };
+        case (?count) {
+          disasterTypeMap.add(victim.disasterType, count + 1);
+        };
+      };
+    };
+
+    let validationStatusMap = Map.empty<Text, Nat>();
+    for (record in validationRecords.values()) {
+      switch (validationStatusMap.get(record.validationStatus)) {
+        case (null) {
+          validationStatusMap.add(record.validationStatus, 1);
+        };
+        case (?count) {
+          validationStatusMap.add(record.validationStatus, count + 1);
+        };
+      };
+    };
+
+    {
+      totalVictims;
+      byDisasterType = disasterTypeMap.toArray();
+      byValidationStatus = validationStatusMap.toArray();
+    };
+  };
+
+  // Validator role management
+  public shared ({ caller }) func assignValidatorRole(user : Principal) : async () {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can assign validator role");
+    };
+
+    validatorUsers.add(user, ());
+  };
+
+  public shared ({ caller }) func revokeValidatorRole(user : Principal) : async () {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can revoke validator role");
+    };
+
+    validatorUsers.remove(user);
+  };
+
+  public query ({ caller }) func getAllValidators() : async [Principal] {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can get all validators");
+    };
+
+    validatorUsers.keys().toArray();
+  };
+
+  // Bantuan Penerima CRUD Operations
+
+  public query ({ caller = _ }) func getAllBantuanPenerima() : async [BantuanPenerima] {
+    // Public, no auth required
+    bantuanPenerimaMap.values().toArray();
+  };
+
+  public query ({ caller = _ }) func getBantuanPenerimaById(id : Nat) : async ?BantuanPenerima {
+    // Public, no auth required
+    bantuanPenerimaMap.get(id);
+  };
+
+  public query ({ caller = _ }) func filterBantuanPenerimaByStatus(status : Text) : async [BantuanPenerima] {
+    // Public, no auth required
+    let filtered = bantuanPenerimaMap.values().toArray().filter(
+      func(data : BantuanPenerima) : Bool { data.validasiStatus == status }
+    );
+    filtered;
+  };
+
+  public shared ({ caller }) func addBantuanPenerima(data : BantuanPenerima) : async () {
+    if (not (isAdminOrValidator(caller))) {
+      Runtime.trap("Unauthorized access. You must be an admin or validator to perform this action.");
+    };
+
+    let newData : BantuanPenerima = {
+      id = nextBantuanPenerimaId;
+      nama = data.nama;
+      nik = data.nik;
+      alamat = data.alamat;
+      keperluanBantuan = data.keperluanBantuan;
+      keterangan = data.keterangan;
+      prosesTindakLanjut = data.prosesTindakLanjut;
+      instansiPembantu = data.instansiPembantu;
+      validasiStatus = "baru";
+      tindakLanjutKeterangan = data.tindakLanjutKeterangan;
+      createdBy = caller;
+      createdDate = Time.now();
+      updatedDate = Time.now();
+    };
+
+    bantuanPenerimaMap.add(nextBantuanPenerimaId, newData);
+    nextBantuanPenerimaId += 1;
+  };
+
+  public shared ({ caller }) func updateBantuanPenerima(data : BantuanPenerima) : async () {
+    if (not isAdminOrValidator(caller)) {
+      Runtime.trap("Unauthorized access. You must be an admin or validator to perform this action.");
+    };
+
+    switch (bantuanPenerimaMap.get(data.id)) {
+      case (null) {
+        Runtime.trap("Error: Bantuan Penerima not found.");
+      };
+      case (?_) {
+        let updatedData : BantuanPenerima = {
+          data with updatedDate = Time.now();
+        };
+        bantuanPenerimaMap.add(data.id, updatedData);
+      };
+    };
+  };
+
+  public shared ({ caller }) func updateBantuanPenerimaStatus(
+    id : Nat,
+    validasiStatus : Text,
+    tindakLanjutKeterangan : Text,
+    instansiPembantu : Text,
+  ) : async () {
+    if (not isAdminOrValidator(caller)) {
+      Runtime.trap("Unauthorized access. You must be an admin or validator to perform this action.");
+    };
+
+    switch (bantuanPenerimaMap.get(id)) {
+      case (null) {
+        Runtime.trap("Error: Bantuan Penerima not found.");
+      };
+      case (?existingData) {
+        let updatedData : BantuanPenerima = {
+          existingData with validasiStatus;
+          tindakLanjutKeterangan;
+          instansiPembantu;
+          updatedDate = Time.now();
+        };
+        bantuanPenerimaMap.add(id, updatedData);
+      };
+    };
+  };
+
+  public shared ({ caller }) func deleteBantuanPenerima(id : Nat) : async Bool {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      Runtime.trap("Unauthorized: Only admins can delete Bantuan Penerima");
+    };
+
+    if (not (bantuanPenerimaMap.containsKey(id))) {
+      return false;
+    };
+
+    bantuanPenerimaMap.remove(id);
+    true;
+  };
+};

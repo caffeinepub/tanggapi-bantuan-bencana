@@ -22,6 +22,39 @@ export interface AidRecipient {
   'distributionStatus' : string,
   'subdistrict' : string,
 }
+export interface BantuanPenerima {
+  'id' : bigint,
+  'nik' : string,
+  'updatedDate' : bigint,
+  'tindakLanjutKeterangan' : string,
+  'alamat' : string,
+  'nama' : string,
+  'createdBy' : Principal,
+  'createdDate' : bigint,
+  'instansiPembantu' : string,
+  'keterangan' : string,
+  'validasiStatus' : string,
+  'prosesTindakLanjut' : string,
+  'keperluanBantuan' : string,
+}
+export interface DisasterVictim {
+  'id' : bigint,
+  'rt' : string,
+  'rw' : string,
+  'nik' : string,
+  'kabupaten' : string,
+  'fullName' : string,
+  'lossDescription' : string,
+  'disasterDate' : bigint,
+  'kecamatan' : string,
+  'address' : string,
+  'disasterType' : string,
+  'physicalCondition' : string,
+  'registrationDate' : bigint,
+  'damageLevel' : string,
+  'registeredBy' : Principal,
+  'kelurahan' : string,
+}
 export interface FooterLink {
   'id' : bigint,
   'url' : string,
@@ -47,31 +80,68 @@ export interface Report {
   'description' : string,
   'reportDate' : bigint,
 }
-export interface UserProfile { 'name' : string }
+export interface UserEntry { 'principal' : Principal, 'role' : string }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
+export interface ValidationRecord {
+  'id' : bigint,
+  'validationStatus' : string,
+  'victimId' : bigint,
+  'needType' : string,
+  'needDescription' : string,
+  'createdBy' : Principal,
+  'createdDate' : bigint,
+  'validatorNotes' : string,
+  'estimatedValue' : bigint,
+  'validationDate' : [] | [bigint],
+  'validatedBy' : [] | [Principal],
+}
+export interface ValidationStats {
+  'byValidationStatus' : Array<[string, bigint]>,
+  'totalVictims' : bigint,
+  'byDisasterType' : Array<[string, bigint]>,
+}
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'addAidRecipient' : ActorMethod<[AidRecipient], bigint>,
+  'addBantuanPenerima' : ActorMethod<[BantuanPenerima], undefined>,
+  'addDisasterVictim' : ActorMethod<[DisasterVictim], bigint>,
   'addFooterLink' : ActorMethod<[FooterLink], bigint>,
   'addPublication' : ActorMethod<[Publication], bigint>,
   'addReport' : ActorMethod<[Report], bigint>,
+  'addValidationRecord' : ActorMethod<[ValidationRecord], bigint>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'assignValidatorRole' : ActorMethod<[Principal], undefined>,
   'deleteAidRecipient' : ActorMethod<[bigint], boolean>,
+  'deleteBantuanPenerima' : ActorMethod<[bigint], boolean>,
+  'deleteDisasterVictim' : ActorMethod<[bigint], undefined>,
   'deleteFooterLink' : ActorMethod<[bigint], boolean>,
   'deletePublication' : ActorMethod<[bigint], boolean>,
+  'deleteReport' : ActorMethod<[bigint], boolean>,
+  'deleteValidationRecord' : ActorMethod<[bigint], undefined>,
   'filterAidRecipientsByDistrict' : ActorMethod<[string], Array<AidRecipient>>,
   'filterAidRecipientsByStatus' : ActorMethod<[string], Array<AidRecipient>>,
   'filterAidRecipientsByType' : ActorMethod<[string], Array<AidRecipient>>,
+  'filterBantuanPenerimaByStatus' : ActorMethod<
+    [string],
+    Array<BantuanPenerima>
+  >,
   'filterReportsByStatus' : ActorMethod<[string], Array<Report>>,
   'filterReportsByTopic' : ActorMethod<[string], Array<Report>>,
   'getAidRecipientById' : ActorMethod<[bigint], [] | [AidRecipient]>,
   'getAllAidRecipients' : ActorMethod<[], Array<AidRecipient>>,
+  'getAllBantuanPenerima' : ActorMethod<[], Array<BantuanPenerima>>,
+  'getAllDisasterVictims' : ActorMethod<[], Array<DisasterVictim>>,
   'getAllPublications' : ActorMethod<[], Array<Publication>>,
   'getAllReports' : ActorMethod<[], Array<Report>>,
-  'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
+  'getAllUsers' : ActorMethod<[], Array<UserEntry>>,
+  'getAllValidationRecords' : ActorMethod<[], Array<ValidationRecord>>,
+  'getAllValidators' : ActorMethod<[], Array<Principal>>,
+  'getBantuanPenerimaById' : ActorMethod<[bigint], [] | [BantuanPenerima]>,
+  'getCallerUserProfile' : ActorMethod<[], [] | [{ 'name' : string }]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
+  'getDisasterVictimById' : ActorMethod<[bigint], [] | [DisasterVictim]>,
   'getFooterLinks' : ActorMethod<[], Array<FooterLink>>,
   'getPublicationById' : ActorMethod<[bigint], [] | [Publication]>,
   'getRecipientsByAidType' : ActorMethod<[], Array<[string, bigint]>>,
@@ -81,15 +151,34 @@ export interface _SERVICE {
   'getReportsByStatus' : ActorMethod<[], Array<[string, bigint]>>,
   'getReportsByTopic' : ActorMethod<[], Array<[string, bigint]>>,
   'getTotalRecipients' : ActorMethod<[], bigint>,
-  'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
+  'getUserProfile' : ActorMethod<[Principal], [] | [{ 'name' : string }]>,
+  'getValidationRecordsByVictim' : ActorMethod<
+    [bigint],
+    Array<ValidationRecord>
+  >,
+  'getValidationStats' : ActorMethod<[], ValidationStats>,
   'initializeSampleData' : ActorMethod<[], undefined>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
-  'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'isCallerAdminOrValidator' : ActorMethod<[], boolean>,
+  'isCallerValidator' : ActorMethod<[], boolean>,
+  'revokeValidatorRole' : ActorMethod<[Principal], undefined>,
+  'saveCallerUserProfile' : ActorMethod<[{ 'name' : string }], undefined>,
   'searchAidRecipients' : ActorMethod<[string], Array<AidRecipient>>,
   'updateAidRecipient' : ActorMethod<[AidRecipient], boolean>,
+  'updateBantuanPenerima' : ActorMethod<[BantuanPenerima], undefined>,
+  'updateBantuanPenerimaStatus' : ActorMethod<
+    [bigint, string, string, string],
+    undefined
+  >,
+  'updateDisasterVictim' : ActorMethod<[DisasterVictim], boolean>,
   'updateFooterLink' : ActorMethod<[FooterLink], boolean>,
   'updatePublication' : ActorMethod<[Publication], boolean>,
   'updateReportStatus' : ActorMethod<[bigint, string], boolean>,
+  'updateValidationRecord' : ActorMethod<[ValidationRecord], boolean>,
+  'updateValidationStatus' : ActorMethod<
+    [bigint, string, string, Principal],
+    boolean
+  >,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

@@ -8,6 +8,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -36,8 +37,15 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import type { Principal } from "@icp-sdk/core/principal";
+import { Link } from "@tanstack/react-router";
 import {
   BookOpen,
+  CheckCircle2,
+  ClipboardCheck,
+  Clock,
+  ExternalLink,
+  HandHeart,
   Link as LinkIcon,
   Loader2,
   Lock,
@@ -47,7 +55,10 @@ import {
   RefreshCw,
   Search,
   Shield,
+  ShieldCheck,
+  ShieldMinus,
   Trash2,
+  UserCog,
   Users,
 } from "lucide-react";
 import { motion } from "motion/react";
@@ -59,6 +70,7 @@ import type {
   Publication,
   Report,
 } from "../backend.d";
+import { UserRole } from "../backend.d";
 import {
   AidTypeBadge,
   DistributionStatusBadge,
@@ -69,20 +81,27 @@ import {
   useAddFooterLink,
   useAddPublication,
   useAddReport,
+  useAssignUserRole,
+  useAssignValidatorRole,
   useDeleteAidRecipient,
   useDeleteFooterLink,
   useDeletePublication,
   useGetAllAidRecipients,
   useGetAllPublications,
   useGetAllReports,
+  useGetAllUsers,
+  useGetAllValidators,
   useGetFooterLinks,
+  useGetValidationStats,
   useInitializeSampleData,
   useIsCallerAdmin,
+  useRevokeValidatorRole,
   useUpdateAidRecipient,
   useUpdateFooterLink,
   useUpdatePublication,
   useUpdateReportStatus,
 } from "../hooks/useQueries";
+import { useGetAllBantuanPenerima } from "../hooks/useQueries";
 import {
   formatCurrency,
   formatDateId,
@@ -1382,6 +1401,732 @@ function LinksTab() {
   );
 }
 
+// ─── Users Tab ────────────────────────────────────────────────────────────────
+
+function UsersTab() {
+  const [confirmUser, setConfirmUser] = useState<{
+    principal: string;
+    currentRole: string;
+    targetRole: UserRole;
+  } | null>(null);
+
+  const { data: users, isLoading, refetch, isFetching } = useGetAllUsers();
+  const assignRole = useAssignUserRole();
+
+  const handleConfirmRoleChange = async () => {
+    if (!confirmUser) return;
+    try {
+      const { Principal } = await import("@icp-sdk/core/principal");
+      const principalObj = Principal.fromText(confirmUser.principal);
+      await assignRole.mutateAsync({
+        user: principalObj,
+        role: confirmUser.targetRole,
+      });
+      toast.success(
+        confirmUser.targetRole === UserRole.admin
+          ? "Pengguna berhasil dijadikan admin"
+          : "Role pengguna berhasil diubah menjadi user",
+      );
+    } catch {
+      toast.error("Gagal mengubah role pengguna");
+    } finally {
+      setConfirmUser(null);
+    }
+  };
+
+  const shortenPrincipal = (p: string) => {
+    if (p.length <= 16) return p;
+    return `${p.slice(0, 8)}...${p.slice(-4)}`;
+  };
+
+  return (
+    <>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="font-semibold text-foreground">
+            Daftar Pengguna Terdaftar
+          </h3>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {users ? `${users.length} pengguna terdaftar` : "Memuat data..."}
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => refetch()}
+          disabled={isFetching}
+          className="gap-2"
+        >
+          {isFetching ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <RefreshCw className="w-4 h-4" />
+          )}
+          Refresh
+        </Button>
+      </div>
+
+      <div className="bg-white rounded-xl border border-border overflow-hidden shadow-card">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-secondary/50">
+              <TableHead className="w-12">No.</TableHead>
+              <TableHead>Principal ID</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead className="text-right">Aksi</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading
+              ? ["a", "b", "c", "d"].map((rowKey) => (
+                  <TableRow key={rowKey}>
+                    {["1", "2", "3", "4"].map((colKey) => (
+                      <TableCell key={colKey}>
+                        <Skeleton className="h-5 w-full" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              : (users ?? []).map((u, index) => {
+                  const principalStr = u.principal.toString();
+                  return (
+                    <TableRow
+                      key={principalStr}
+                      className="hover:bg-secondary/20"
+                    >
+                      <TableCell className="text-sm text-muted-foreground font-medium">
+                        {index + 1}
+                      </TableCell>
+                      <TableCell>
+                        <code
+                          className="text-xs bg-muted px-2 py-1 rounded font-mono"
+                          title={principalStr}
+                        >
+                          {shortenPrincipal(principalStr)}
+                        </code>
+                      </TableCell>
+                      <TableCell>
+                        {u.role === "admin" ? (
+                          <Badge className="bg-destructive/10 text-destructive border-destructive/20 gap-1.5 font-medium">
+                            <Shield className="w-3.5 h-3.5" />
+                            Admin
+                          </Badge>
+                        ) : u.role === "user" ? (
+                          <Badge className="bg-blue-50 text-blue-700 border-blue-200 gap-1.5 font-medium">
+                            <Users className="w-3.5 h-3.5" />
+                            User
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="secondary"
+                            className="gap-1.5 font-medium text-muted-foreground"
+                          >
+                            Guest
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-end gap-2">
+                          {u.role === "user" && (
+                            <Button
+                              size="sm"
+                              className="bg-primary text-white gap-1.5 h-8"
+                              onClick={() =>
+                                setConfirmUser({
+                                  principal: principalStr,
+                                  currentRole: u.role,
+                                  targetRole: UserRole.admin,
+                                })
+                              }
+                            >
+                              <ShieldCheck className="w-3.5 h-3.5" />
+                              Jadikan Admin
+                            </Button>
+                          )}
+                          {u.role === "admin" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-orange-300 text-orange-600 hover:bg-orange-50 gap-1.5 h-8"
+                              onClick={() =>
+                                setConfirmUser({
+                                  principal: principalStr,
+                                  currentRole: u.role,
+                                  targetRole: UserRole.user,
+                                })
+                              }
+                            >
+                              <ShieldMinus className="w-3.5 h-3.5" />
+                              Turunkan ke User
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+          </TableBody>
+        </Table>
+        {(users ?? []).length === 0 && !isLoading && (
+          <div className="text-center py-10 text-muted-foreground text-sm">
+            <UserCog className="w-8 h-8 mx-auto mb-2 opacity-20" />
+            Belum ada pengguna terdaftar
+          </div>
+        )}
+      </div>
+
+      {/* Konfirmasi Ubah Role */}
+      <AlertDialog
+        open={!!confirmUser}
+        onOpenChange={() => setConfirmUser(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ubah Role Pengguna?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span>Apakah Anda yakin ingin mengubah role pengguna ini?</span>
+              {confirmUser && (
+                <span className="block mt-2 font-mono text-xs bg-muted px-2 py-1 rounded break-all">
+                  {confirmUser.principal}
+                </span>
+              )}
+              {confirmUser && (
+                <span className="block mt-1">
+                  Role akan diubah dari{" "}
+                  <strong className="capitalize">
+                    {confirmUser.currentRole}
+                  </strong>{" "}
+                  menjadi{" "}
+                  <strong className="capitalize">
+                    {confirmUser.targetRole}
+                  </strong>
+                  .
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmRoleChange}
+              className={
+                confirmUser?.targetRole === UserRole.admin
+                  ? "bg-primary text-white hover:bg-primary/90"
+                  : "bg-orange-500 text-white hover:bg-orange-600"
+              }
+            >
+              {assignRole.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : null}
+              Ya, Ubah Role
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
+// ─── Validator Management Tab ─────────────────────────────────────────────────
+
+function ValidatorManagementTab() {
+  const [newPrincipal, setNewPrincipal] = useState("");
+  const [confirmRevoke, setConfirmRevoke] = useState<Principal | null>(null);
+  const [isAddOpen, setIsAddOpen] = useState(false);
+
+  const {
+    data: validators,
+    isLoading: loadingValidators,
+    refetch,
+    isFetching,
+  } = useGetAllValidators();
+  const { data: stats, isLoading: loadingStats } = useGetValidationStats();
+  const assignValidator = useAssignValidatorRole();
+  const revokeValidator = useRevokeValidatorRole();
+
+  const handleAssign = async () => {
+    if (!newPrincipal.trim()) {
+      toast.error("Principal ID wajib diisi");
+      return;
+    }
+    try {
+      const { Principal } = await import("@icp-sdk/core/principal");
+      const principalObj = Principal.fromText(newPrincipal.trim());
+      await assignValidator.mutateAsync(principalObj);
+      toast.success("Validator berhasil ditambahkan");
+      setNewPrincipal("");
+      setIsAddOpen(false);
+    } catch {
+      toast.error("Gagal menambahkan validator. Pastikan Principal ID valid.");
+    }
+  };
+
+  const handleRevoke = async () => {
+    if (!confirmRevoke) return;
+    try {
+      await revokeValidator.mutateAsync(confirmRevoke);
+      toast.success("Role validator berhasil dicabut");
+    } catch {
+      toast.error("Gagal mencabut role validator");
+    } finally {
+      setConfirmRevoke(null);
+    }
+  };
+
+  const shortenPrincipal = (p: string) => {
+    if (p.length <= 20) return p;
+    return `${p.slice(0, 10)}...${p.slice(-6)}`;
+  };
+
+  const totalVictims = stats ? Number(stats.totalVictims) : 0;
+  const byStatus = stats?.byValidationStatus ?? [];
+  const byType = stats?.byDisasterType ?? [];
+
+  const getStatusCount = (status: string) => {
+    const found = byStatus.find(([s]) => s === status);
+    return found ? Number(found[1]) : 0;
+  };
+
+  return (
+    <>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white border border-border rounded-xl p-4 shadow-card">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
+            Total Korban
+          </p>
+          {loadingStats ? (
+            <Skeleton className="h-8 w-16" />
+          ) : (
+            <p className="text-2xl font-bold text-foreground">{totalVictims}</p>
+          )}
+        </div>
+        <div className="bg-white border border-border rounded-xl p-4 shadow-card">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
+            Menunggu Validasi
+          </p>
+          {loadingStats ? (
+            <Skeleton className="h-8 w-16" />
+          ) : (
+            <p className="text-2xl font-bold text-gray-600">
+              {getStatusCount("menunggu")}
+            </p>
+          )}
+        </div>
+        <div className="bg-white border border-border rounded-xl p-4 shadow-card">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
+            Sudah Divalidasi
+          </p>
+          {loadingStats ? (
+            <Skeleton className="h-8 w-16" />
+          ) : (
+            <p className="text-2xl font-bold text-emerald-600">
+              {getStatusCount("divalidasi")}
+            </p>
+          )}
+        </div>
+        <div className="bg-white border border-border rounded-xl p-4 shadow-card">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
+            Ditolak
+          </p>
+          {loadingStats ? (
+            <Skeleton className="h-8 w-16" />
+          ) : (
+            <p className="text-2xl font-bold text-destructive">
+              {getStatusCount("ditolak")}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Disaster Type Stats */}
+      {byType.length > 0 && (
+        <div className="bg-white border border-border rounded-xl p-4 shadow-card mb-6">
+          <h4 className="font-semibold text-sm mb-3">Sebaran Jenis Bencana</h4>
+          <div className="flex flex-wrap gap-2">
+            {byType.map(([type, count]) => (
+              <span
+                key={type}
+                className="px-3 py-1.5 bg-secondary rounded-lg text-sm font-medium capitalize"
+              >
+                {type}:{" "}
+                <span className="font-bold text-primary">{Number(count)}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Validator List */}
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="font-semibold text-foreground flex items-center gap-2">
+            <ClipboardCheck className="w-4 h-4 text-emerald-600" />
+            Daftar Admin Validasi
+          </h3>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {validators
+              ? `${validators.length} validator aktif`
+              : "Memuat data..."}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="gap-2"
+          >
+            {isFetching ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <RefreshCw className="w-4 h-4" />
+            )}
+            Refresh
+          </Button>
+          <Button
+            size="sm"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+            onClick={() => setIsAddOpen(true)}
+          >
+            <Plus className="w-4 h-4" />
+            Tambah Validator
+          </Button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-border overflow-hidden shadow-card">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-secondary/50">
+              <TableHead className="w-12">No.</TableHead>
+              <TableHead>Principal ID (Validator)</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Aksi</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loadingValidators
+              ? ["a", "b"].map((k) => (
+                  <TableRow key={k}>
+                    {["1", "2", "3", "4"].map((c) => (
+                      <TableCell key={c}>
+                        <Skeleton className="h-5 w-full" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              : (validators ?? []).map((principal, idx) => {
+                  const principalStr = principal.toString();
+                  return (
+                    <TableRow
+                      key={principalStr}
+                      className="hover:bg-secondary/20"
+                    >
+                      <TableCell className="text-sm text-muted-foreground font-medium">
+                        {idx + 1}
+                      </TableCell>
+                      <TableCell>
+                        <code
+                          className="text-xs bg-muted px-2 py-1 rounded font-mono"
+                          title={principalStr}
+                        >
+                          {shortenPrincipal(principalStr)}
+                        </code>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 gap-1.5 font-medium">
+                          <ClipboardCheck className="w-3.5 h-3.5" />
+                          Validator Aktif
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-red-300 text-red-600 hover:bg-red-50 gap-1.5 h-8"
+                            onClick={() => setConfirmRevoke(principal)}
+                          >
+                            <ShieldMinus className="w-3.5 h-3.5" />
+                            Cabut Akses
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+          </TableBody>
+        </Table>
+        {(validators ?? []).length === 0 && !loadingValidators && (
+          <div className="text-center py-10 text-muted-foreground text-sm">
+            <ClipboardCheck className="w-8 h-8 mx-auto mb-2 opacity-20" />
+            <p>Belum ada validator terdaftar</p>
+            <p className="text-xs mt-1">
+              Tambahkan validator untuk membantu proses validasi data bencana
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Add Validator Dialog */}
+      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display flex items-center gap-2">
+              <ClipboardCheck className="w-5 h-5 text-emerald-600" />
+              Tambah Admin Validasi
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label>Principal ID *</Label>
+              <Input
+                value={newPrincipal}
+                onChange={(e) => setNewPrincipal(e.target.value)}
+                placeholder="Contoh: aaaaa-bbbbb-ccccc-..."
+                className="mt-1.5 font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground mt-1.5">
+                Masukkan Principal ID pengguna yang akan dijadikan validator.
+                Pengguna harus sudah login terlebih dahulu.
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setIsAddOpen(false)}>
+              Batal
+            </Button>
+            <Button
+              onClick={handleAssign}
+              disabled={assignValidator.isPending}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+            >
+              {assignValidator.isPending && (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              )}
+              Tambah Validator
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Revoke Confirm */}
+      <AlertDialog
+        open={!!confirmRevoke}
+        onOpenChange={() => setConfirmRevoke(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cabut Akses Validator?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span>
+                Apakah Anda yakin ingin mencabut akses validator dari pengguna
+                ini?
+              </span>
+              {confirmRevoke && (
+                <span className="block mt-2 font-mono text-xs bg-muted px-2 py-1 rounded break-all">
+                  {confirmRevoke.toString()}
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRevoke}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {revokeValidator.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : null}
+              Cabut Akses
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
+// ─── Bantuan Penerima Summary Tab ─────────────────────────────────────────────
+
+function BantuanPenerimaSummaryTab() {
+  const { data, isLoading } = useGetAllBantuanPenerima();
+
+  const total = data?.length ?? 0;
+  const baru = data?.filter((d) => d.validasiStatus === "baru").length ?? 0;
+  const diproses =
+    data?.filter((d) => d.validasiStatus === "diproses").length ?? 0;
+  const ditindak =
+    data?.filter((d) => d.validasiStatus === "ditindaklanjuti").length ?? 0;
+
+  return (
+    <div className="space-y-6">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          {
+            label: "Total Penerima",
+            value: total,
+            color: "text-primary",
+            bg: "bg-primary/5",
+            icon: Users,
+          },
+          {
+            label: "Baru",
+            value: baru,
+            color: "text-slate-600",
+            bg: "bg-slate-50",
+            icon: HandHeart,
+          },
+          {
+            label: "Diproses",
+            value: diproses,
+            color: "text-amber-600",
+            bg: "bg-amber-50",
+            icon: Clock,
+          },
+          {
+            label: "Ditindaklanjuti",
+            value: ditindak,
+            color: "text-emerald-600",
+            bg: "bg-emerald-50",
+            icon: CheckCircle2,
+          },
+        ].map((c) => (
+          <div
+            key={c.label}
+            className={`${c.bg} rounded-xl p-4 border border-border/50`}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1">
+                  {c.label}
+                </p>
+                {isLoading ? (
+                  <Skeleton className="h-8 w-12" />
+                ) : (
+                  <p className={`text-2xl font-bold ${c.color}`}>{c.value}</p>
+                )}
+              </div>
+              <c.icon
+                className={`w-5 h-5 ${c.color} opacity-60 shrink-0 mt-0.5`}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Recent Entries */}
+      <div className="bg-white border border-border rounded-xl overflow-hidden shadow-card">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <h3 className="font-semibold text-sm text-foreground">
+            Data Terbaru
+          </h3>
+          <Link
+            to="/penerima-bantuan"
+            className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+          >
+            Kelola Semua Data
+            <ExternalLink className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-secondary/50">
+              <TableHead>Nama / NIK</TableHead>
+              <TableHead className="hidden md:table-cell">
+                Keperluan Bantuan
+              </TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="hidden lg:table-cell">Tanggal</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading
+              ? ["a", "b", "c"].map((k) => (
+                  <TableRow key={k}>
+                    {["1", "2", "3", "4"].map((c) => (
+                      <TableCell key={c}>
+                        <Skeleton className="h-5 w-full" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              : (data ?? []).slice(0, 5).map((item) => (
+                  <TableRow
+                    key={String(item.id)}
+                    className="hover:bg-secondary/20"
+                  >
+                    <TableCell>
+                      <div>
+                        <p className="font-medium text-sm">{item.nama}</p>
+                        <p className="text-xs text-muted-foreground font-mono">
+                          {item.nik}
+                        </p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <p className="text-sm text-muted-foreground line-clamp-1 max-w-[200px]">
+                        {item.keperluanBantuan || "-"}
+                      </p>
+                    </TableCell>
+                    <TableCell>
+                      {item.validasiStatus === "ditindaklanjuti" ? (
+                        <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 gap-1 text-xs">
+                          <CheckCircle2 className="w-3 h-3" />
+                          Ditindaklanjuti
+                        </Badge>
+                      ) : item.validasiStatus === "diproses" ? (
+                        <Badge className="bg-amber-50 text-amber-700 border-amber-200 gap-1 text-xs">
+                          <Clock className="w-3 h-3" />
+                          Diproses
+                        </Badge>
+                      ) : (
+                        <Badge
+                          variant="secondary"
+                          className="gap-1 text-xs text-muted-foreground"
+                        >
+                          Baru
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
+                      {formatDateId(item.createdDate)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+          </TableBody>
+        </Table>
+        {(data ?? []).length === 0 && !isLoading && (
+          <div className="text-center py-10 text-muted-foreground text-sm">
+            <HandHeart className="w-8 h-8 mx-auto mb-2 opacity-20" />
+            <p>Belum ada data penerima bantuan</p>
+            <Link
+              to="/penerima-bantuan"
+              className="mt-2 inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+            >
+              Tambahkan di halaman Penerima Bantuan
+              <ExternalLink className="w-3 h-3" />
+            </Link>
+          </div>
+        )}
+      </div>
+
+      <div className="flex justify-end">
+        <Link to="/penerima-bantuan">
+          <Button className="bg-primary text-white gap-2">
+            <HandHeart className="w-4 h-4" />
+            Buka Halaman Penerima Bantuan
+          </Button>
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 // ─── Admin Page ───────────────────────────────────────────────────────────────
 
 export default function AdminPage() {
@@ -1473,11 +2218,16 @@ export default function AdminPage() {
 
       <div className="container mx-auto px-4 py-8">
         <Tabs defaultValue="recipients">
-          <TabsList className="mb-6 bg-white border border-border shadow-xs">
+          <TabsList className="mb-6 bg-white border border-border shadow-xs flex-wrap h-auto gap-1 p-1">
             <TabsTrigger value="recipients" className="gap-1.5">
               <Users className="w-4 h-4" />
-              <span className="hidden sm:inline">Penerima Bantuan</span>
-              <span className="sm:hidden">Penerima</span>
+              <span className="hidden sm:inline">Penerima Aid</span>
+              <span className="sm:hidden">Aid</span>
+            </TabsTrigger>
+            <TabsTrigger value="bantuan-penerima" className="gap-1.5">
+              <HandHeart className="w-4 h-4" />
+              <span className="hidden sm:inline">Bantuan Pasca Bencana</span>
+              <span className="sm:hidden">Bantuan</span>
             </TabsTrigger>
             <TabsTrigger value="reports" className="gap-1.5">
               <MessageSquare className="w-4 h-4" />
@@ -1492,10 +2242,24 @@ export default function AdminPage() {
               <span className="hidden sm:inline">Link Footer</span>
               <span className="sm:hidden">Link</span>
             </TabsTrigger>
+            <TabsTrigger value="users" className="gap-1.5">
+              <UserCog className="w-4 h-4" />
+              <span className="hidden sm:inline">Daftar User</span>
+              <span className="sm:hidden">User</span>
+            </TabsTrigger>
+            <TabsTrigger value="validators" className="gap-1.5">
+              <ClipboardCheck className="w-4 h-4" />
+              <span className="hidden sm:inline">Admin Validasi</span>
+              <span className="sm:hidden">Validasi</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="recipients">
             <AidRecipientsTab />
+          </TabsContent>
+
+          <TabsContent value="bantuan-penerima">
+            <BantuanPenerimaSummaryTab />
           </TabsContent>
 
           <TabsContent value="reports">
@@ -1508,6 +2272,14 @@ export default function AdminPage() {
 
           <TabsContent value="links">
             <LinksTab />
+          </TabsContent>
+
+          <TabsContent value="users">
+            <UsersTab />
+          </TabsContent>
+
+          <TabsContent value="validators">
+            <ValidatorManagementTab />
           </TabsContent>
         </Tabs>
       </div>

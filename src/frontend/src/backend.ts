@@ -89,6 +89,46 @@ export class ExternalBlob {
         return this;
     }
 }
+export interface UserEntry {
+    principal: Principal;
+    role: string;
+}
+export interface ValidationStats {
+    byValidationStatus: Array<[string, bigint]>;
+    totalVictims: bigint;
+    byDisasterType: Array<[string, bigint]>;
+}
+export interface DisasterVictim {
+    id: bigint;
+    rt: string;
+    rw: string;
+    nik: string;
+    kabupaten: string;
+    fullName: string;
+    lossDescription: string;
+    disasterDate: bigint;
+    kecamatan: string;
+    address: string;
+    disasterType: string;
+    physicalCondition: string;
+    registrationDate: bigint;
+    damageLevel: string;
+    registeredBy: Principal;
+    kelurahan: string;
+}
+export interface ValidationRecord {
+    id: bigint;
+    validationStatus: string;
+    victimId: bigint;
+    needType: string;
+    needDescription: string;
+    createdBy: Principal;
+    createdDate: bigint;
+    validatorNotes: string;
+    estimatedValue: bigint;
+    validationDate?: bigint;
+    validatedBy?: Principal;
+}
 export interface AidRecipient {
     id: bigint;
     nik: string;
@@ -111,6 +151,21 @@ export interface Publication {
     readTime: bigint;
     summary: string;
 }
+export interface BantuanPenerima {
+    id: bigint;
+    nik: string;
+    updatedDate: bigint;
+    tindakLanjutKeterangan: string;
+    alamat: string;
+    nama: string;
+    createdBy: Principal;
+    createdDate: bigint;
+    instansiPembantu: string;
+    keterangan: string;
+    validasiStatus: string;
+    prosesTindakLanjut: string;
+    keperluanBantuan: string;
+}
 export interface Report {
     id: bigint;
     status: string;
@@ -119,9 +174,6 @@ export interface Report {
     reporterName: string;
     description: string;
     reportDate: bigint;
-}
-export interface UserProfile {
-    name: string;
 }
 export interface FooterLink {
     id: bigint;
@@ -137,24 +189,42 @@ export enum UserRole {
 export interface backendInterface {
     _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
     addAidRecipient(aid: AidRecipient): Promise<bigint>;
+    addBantuanPenerima(data: BantuanPenerima): Promise<void>;
+    addDisasterVictim(victim: DisasterVictim): Promise<bigint>;
     addFooterLink(link: FooterLink): Promise<bigint>;
     addPublication(publication: Publication): Promise<bigint>;
     addReport(report: Report): Promise<bigint>;
+    addValidationRecord(record: ValidationRecord): Promise<bigint>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    assignValidatorRole(user: Principal): Promise<void>;
     deleteAidRecipient(id: bigint): Promise<boolean>;
+    deleteBantuanPenerima(id: bigint): Promise<boolean>;
+    deleteDisasterVictim(id: bigint): Promise<void>;
     deleteFooterLink(id: bigint): Promise<boolean>;
     deletePublication(id: bigint): Promise<boolean>;
+    deleteReport(id: bigint): Promise<boolean>;
+    deleteValidationRecord(id: bigint): Promise<void>;
     filterAidRecipientsByDistrict(district: string): Promise<Array<AidRecipient>>;
     filterAidRecipientsByStatus(status: string): Promise<Array<AidRecipient>>;
     filterAidRecipientsByType(aidType: string): Promise<Array<AidRecipient>>;
+    filterBantuanPenerimaByStatus(status: string): Promise<Array<BantuanPenerima>>;
     filterReportsByStatus(status: string): Promise<Array<Report>>;
     filterReportsByTopic(topic: string): Promise<Array<Report>>;
     getAidRecipientById(id: bigint): Promise<AidRecipient | null>;
     getAllAidRecipients(): Promise<Array<AidRecipient>>;
+    getAllBantuanPenerima(): Promise<Array<BantuanPenerima>>;
+    getAllDisasterVictims(): Promise<Array<DisasterVictim>>;
     getAllPublications(): Promise<Array<Publication>>;
     getAllReports(): Promise<Array<Report>>;
-    getCallerUserProfile(): Promise<UserProfile | null>;
+    getAllUsers(): Promise<Array<UserEntry>>;
+    getAllValidationRecords(): Promise<Array<ValidationRecord>>;
+    getAllValidators(): Promise<Array<Principal>>;
+    getBantuanPenerimaById(id: bigint): Promise<BantuanPenerima | null>;
+    getCallerUserProfile(): Promise<{
+        name: string;
+    } | null>;
     getCallerUserRole(): Promise<UserRole>;
+    getDisasterVictimById(id: bigint): Promise<DisasterVictim | null>;
     getFooterLinks(): Promise<Array<FooterLink>>;
     getPublicationById(id: bigint): Promise<Publication | null>;
     getRecipientsByAidType(): Promise<Array<[string, bigint]>>;
@@ -164,17 +234,31 @@ export interface backendInterface {
     getReportsByStatus(): Promise<Array<[string, bigint]>>;
     getReportsByTopic(): Promise<Array<[string, bigint]>>;
     getTotalRecipients(): Promise<bigint>;
-    getUserProfile(user: Principal): Promise<UserProfile | null>;
+    getUserProfile(user: Principal): Promise<{
+        name: string;
+    } | null>;
+    getValidationRecordsByVictim(victimId: bigint): Promise<Array<ValidationRecord>>;
+    getValidationStats(): Promise<ValidationStats>;
     initializeSampleData(): Promise<void>;
     isCallerAdmin(): Promise<boolean>;
-    saveCallerUserProfile(profile: UserProfile): Promise<void>;
+    isCallerAdminOrValidator(): Promise<boolean>;
+    isCallerValidator(): Promise<boolean>;
+    revokeValidatorRole(user: Principal): Promise<void>;
+    saveCallerUserProfile(profile: {
+        name: string;
+    }): Promise<void>;
     searchAidRecipients(searchTerm: string): Promise<Array<AidRecipient>>;
     updateAidRecipient(aid: AidRecipient): Promise<boolean>;
+    updateBantuanPenerima(data: BantuanPenerima): Promise<void>;
+    updateBantuanPenerimaStatus(id: bigint, validasiStatus: string, tindakLanjutKeterangan: string, instansiPembantu: string): Promise<void>;
+    updateDisasterVictim(victim: DisasterVictim): Promise<boolean>;
     updateFooterLink(link: FooterLink): Promise<boolean>;
     updatePublication(publication: Publication): Promise<boolean>;
     updateReportStatus(id: bigint, status: string): Promise<boolean>;
+    updateValidationRecord(record: ValidationRecord): Promise<boolean>;
+    updateValidationStatus(id: bigint, status: string, notes: string, validatedBy: Principal): Promise<boolean>;
 }
-import type { AidRecipient as _AidRecipient, Publication as _Publication, Report as _Report, UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
+import type { AidRecipient as _AidRecipient, BantuanPenerima as _BantuanPenerima, DisasterVictim as _DisasterVictim, Publication as _Publication, Report as _Report, UserRole as _UserRole, ValidationRecord as _ValidationRecord } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
     async _initializeAccessControlWithSecret(arg0: string): Promise<void> {
@@ -202,6 +286,34 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.addAidRecipient(arg0);
+            return result;
+        }
+    }
+    async addBantuanPenerima(arg0: BantuanPenerima): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.addBantuanPenerima(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.addBantuanPenerima(arg0);
+            return result;
+        }
+    }
+    async addDisasterVictim(arg0: DisasterVictim): Promise<bigint> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.addDisasterVictim(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.addDisasterVictim(arg0);
             return result;
         }
     }
@@ -247,17 +359,45 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async assignCallerUserRole(arg0: Principal, arg1: UserRole): Promise<void> {
+    async addValidationRecord(arg0: ValidationRecord): Promise<bigint> {
         if (this.processError) {
             try {
-                const result = await this.actor.assignCallerUserRole(arg0, to_candid_UserRole_n1(this._uploadFile, this._downloadFile, arg1));
+                const result = await this.actor.addValidationRecord(to_candid_ValidationRecord_n1(this._uploadFile, this._downloadFile, arg0));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.assignCallerUserRole(arg0, to_candid_UserRole_n1(this._uploadFile, this._downloadFile, arg1));
+            const result = await this.actor.addValidationRecord(to_candid_ValidationRecord_n1(this._uploadFile, this._downloadFile, arg0));
+            return result;
+        }
+    }
+    async assignCallerUserRole(arg0: Principal, arg1: UserRole): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.assignCallerUserRole(arg0, to_candid_UserRole_n3(this._uploadFile, this._downloadFile, arg1));
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.assignCallerUserRole(arg0, to_candid_UserRole_n3(this._uploadFile, this._downloadFile, arg1));
+            return result;
+        }
+    }
+    async assignValidatorRole(arg0: Principal): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.assignValidatorRole(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.assignValidatorRole(arg0);
             return result;
         }
     }
@@ -272,6 +412,34 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.deleteAidRecipient(arg0);
+            return result;
+        }
+    }
+    async deleteBantuanPenerima(arg0: bigint): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteBantuanPenerima(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteBantuanPenerima(arg0);
+            return result;
+        }
+    }
+    async deleteDisasterVictim(arg0: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteDisasterVictim(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteDisasterVictim(arg0);
             return result;
         }
     }
@@ -300,6 +468,34 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.deletePublication(arg0);
+            return result;
+        }
+    }
+    async deleteReport(arg0: bigint): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteReport(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteReport(arg0);
+            return result;
+        }
+    }
+    async deleteValidationRecord(arg0: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteValidationRecord(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteValidationRecord(arg0);
             return result;
         }
     }
@@ -345,6 +541,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async filterBantuanPenerimaByStatus(arg0: string): Promise<Array<BantuanPenerima>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.filterBantuanPenerimaByStatus(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.filterBantuanPenerimaByStatus(arg0);
+            return result;
+        }
+    }
     async filterReportsByStatus(arg0: string): Promise<Array<Report>> {
         if (this.processError) {
             try {
@@ -377,14 +587,14 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.getAidRecipientById(arg0);
-                return from_candid_opt_n3(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n5(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getAidRecipientById(arg0);
-            return from_candid_opt_n3(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n5(this._uploadFile, this._downloadFile, result);
         }
     }
     async getAllAidRecipients(): Promise<Array<AidRecipient>> {
@@ -398,6 +608,34 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.getAllAidRecipients();
+            return result;
+        }
+    }
+    async getAllBantuanPenerima(): Promise<Array<BantuanPenerima>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllBantuanPenerima();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllBantuanPenerima();
+            return result;
+        }
+    }
+    async getAllDisasterVictims(): Promise<Array<DisasterVictim>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllDisasterVictims();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllDisasterVictims();
             return result;
         }
     }
@@ -429,32 +667,104 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async getCallerUserProfile(): Promise<UserProfile | null> {
+    async getAllUsers(): Promise<Array<UserEntry>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllUsers();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllUsers();
+            return result;
+        }
+    }
+    async getAllValidationRecords(): Promise<Array<ValidationRecord>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllValidationRecords();
+                return from_candid_vec_n6(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllValidationRecords();
+            return from_candid_vec_n6(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getAllValidators(): Promise<Array<Principal>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllValidators();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllValidators();
+            return result;
+        }
+    }
+    async getBantuanPenerimaById(arg0: bigint): Promise<BantuanPenerima | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getBantuanPenerimaById(arg0);
+                return from_candid_opt_n11(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getBantuanPenerimaById(arg0);
+            return from_candid_opt_n11(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getCallerUserProfile(): Promise<{
+        name: string;
+    } | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getCallerUserProfile();
-                return from_candid_opt_n4(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n12(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getCallerUserProfile();
-            return from_candid_opt_n4(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n12(this._uploadFile, this._downloadFile, result);
         }
     }
     async getCallerUserRole(): Promise<UserRole> {
         if (this.processError) {
             try {
                 const result = await this.actor.getCallerUserRole();
-                return from_candid_UserRole_n5(this._uploadFile, this._downloadFile, result);
+                return from_candid_UserRole_n13(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getCallerUserRole();
-            return from_candid_UserRole_n5(this._uploadFile, this._downloadFile, result);
+            return from_candid_UserRole_n13(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getDisasterVictimById(arg0: bigint): Promise<DisasterVictim | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getDisasterVictimById(arg0);
+                return from_candid_opt_n15(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getDisasterVictimById(arg0);
+            return from_candid_opt_n15(this._uploadFile, this._downloadFile, result);
         }
     }
     async getFooterLinks(): Promise<Array<FooterLink>> {
@@ -475,14 +785,14 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.getPublicationById(arg0);
-                return from_candid_opt_n7(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n16(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getPublicationById(arg0);
-            return from_candid_opt_n7(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n16(this._uploadFile, this._downloadFile, result);
         }
     }
     async getRecipientsByAidType(): Promise<Array<[string, bigint]>> {
@@ -531,14 +841,14 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.getReportById(arg0);
-                return from_candid_opt_n8(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n17(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getReportById(arg0);
-            return from_candid_opt_n8(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n17(this._uploadFile, this._downloadFile, result);
         }
     }
     async getReportsByStatus(): Promise<Array<[string, bigint]>> {
@@ -583,18 +893,48 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async getUserProfile(arg0: Principal): Promise<UserProfile | null> {
+    async getUserProfile(arg0: Principal): Promise<{
+        name: string;
+    } | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getUserProfile(arg0);
-                return from_candid_opt_n4(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n12(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getUserProfile(arg0);
-            return from_candid_opt_n4(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n12(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getValidationRecordsByVictim(arg0: bigint): Promise<Array<ValidationRecord>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getValidationRecordsByVictim(arg0);
+                return from_candid_vec_n6(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getValidationRecordsByVictim(arg0);
+            return from_candid_vec_n6(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getValidationStats(): Promise<ValidationStats> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getValidationStats();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getValidationStats();
+            return result;
         }
     }
     async initializeSampleData(): Promise<void> {
@@ -625,7 +965,51 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async saveCallerUserProfile(arg0: UserProfile): Promise<void> {
+    async isCallerAdminOrValidator(): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.isCallerAdminOrValidator();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.isCallerAdminOrValidator();
+            return result;
+        }
+    }
+    async isCallerValidator(): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.isCallerValidator();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.isCallerValidator();
+            return result;
+        }
+    }
+    async revokeValidatorRole(arg0: Principal): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.revokeValidatorRole(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.revokeValidatorRole(arg0);
+            return result;
+        }
+    }
+    async saveCallerUserProfile(arg0: {
+        name: string;
+    }): Promise<void> {
         if (this.processError) {
             try {
                 const result = await this.actor.saveCallerUserProfile(arg0);
@@ -664,6 +1048,48 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.updateAidRecipient(arg0);
+            return result;
+        }
+    }
+    async updateBantuanPenerima(arg0: BantuanPenerima): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateBantuanPenerima(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateBantuanPenerima(arg0);
+            return result;
+        }
+    }
+    async updateBantuanPenerimaStatus(arg0: bigint, arg1: string, arg2: string, arg3: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateBantuanPenerimaStatus(arg0, arg1, arg2, arg3);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateBantuanPenerimaStatus(arg0, arg1, arg2, arg3);
+            return result;
+        }
+    }
+    async updateDisasterVictim(arg0: DisasterVictim): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateDisasterVictim(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateDisasterVictim(arg0);
             return result;
         }
     }
@@ -709,23 +1135,109 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async updateValidationRecord(arg0: ValidationRecord): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateValidationRecord(to_candid_ValidationRecord_n1(this._uploadFile, this._downloadFile, arg0));
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateValidationRecord(to_candid_ValidationRecord_n1(this._uploadFile, this._downloadFile, arg0));
+            return result;
+        }
+    }
+    async updateValidationStatus(arg0: bigint, arg1: string, arg2: string, arg3: Principal): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateValidationStatus(arg0, arg1, arg2, arg3);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateValidationStatus(arg0, arg1, arg2, arg3);
+            return result;
+        }
+    }
 }
-function from_candid_UserRole_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
-    return from_candid_variant_n6(_uploadFile, _downloadFile, value);
+function from_candid_UserRole_n13(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
+    return from_candid_variant_n14(_uploadFile, _downloadFile, value);
 }
-function from_candid_opt_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_AidRecipient]): AidRecipient | null {
+function from_candid_ValidationRecord_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _ValidationRecord): ValidationRecord {
+    return from_candid_record_n8(_uploadFile, _downloadFile, value);
+}
+function from_candid_opt_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [Principal]): Principal | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_opt_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
+function from_candid_opt_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_BantuanPenerima]): BantuanPenerima | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_opt_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Publication]): Publication | null {
+function from_candid_opt_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [{
+        name: string;
+    }]): {
+    name: string;
+} | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_opt_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Report]): Report | null {
+function from_candid_opt_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_DisasterVictim]): DisasterVictim | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_variant_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_opt_n16(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Publication]): Publication | null {
+    return value.length === 0 ? null : value[0];
+}
+function from_candid_opt_n17(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Report]): Report | null {
+    return value.length === 0 ? null : value[0];
+}
+function from_candid_opt_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_AidRecipient]): AidRecipient | null {
+    return value.length === 0 ? null : value[0];
+}
+function from_candid_opt_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [bigint]): bigint | null {
+    return value.length === 0 ? null : value[0];
+}
+function from_candid_record_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    id: bigint;
+    validationStatus: string;
+    victimId: bigint;
+    needType: string;
+    needDescription: string;
+    createdBy: Principal;
+    createdDate: bigint;
+    validatorNotes: string;
+    estimatedValue: bigint;
+    validationDate: [] | [bigint];
+    validatedBy: [] | [Principal];
+}): {
+    id: bigint;
+    validationStatus: string;
+    victimId: bigint;
+    needType: string;
+    needDescription: string;
+    createdBy: Principal;
+    createdDate: bigint;
+    validatorNotes: string;
+    estimatedValue: bigint;
+    validationDate?: bigint;
+    validatedBy?: Principal;
+} {
+    return {
+        id: value.id,
+        validationStatus: value.validationStatus,
+        victimId: value.victimId,
+        needType: value.needType,
+        needDescription: value.needDescription,
+        createdBy: value.createdBy,
+        createdDate: value.createdDate,
+        validatorNotes: value.validatorNotes,
+        estimatedValue: value.estimatedValue,
+        validationDate: record_opt_to_undefined(from_candid_opt_n9(_uploadFile, _downloadFile, value.validationDate)),
+        validatedBy: record_opt_to_undefined(from_candid_opt_n10(_uploadFile, _downloadFile, value.validatedBy))
+    };
+}
+function from_candid_variant_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     admin: null;
 } | {
     user: null;
@@ -734,10 +1246,55 @@ function from_candid_variant_n6(_uploadFile: (file: ExternalBlob) => Promise<Uin
 }): UserRole {
     return "admin" in value ? UserRole.admin : "user" in value ? UserRole.user : "guest" in value ? UserRole.guest : value;
 }
-function to_candid_UserRole_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): _UserRole {
-    return to_candid_variant_n2(_uploadFile, _downloadFile, value);
+function from_candid_vec_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_ValidationRecord>): Array<ValidationRecord> {
+    return value.map((x)=>from_candid_ValidationRecord_n7(_uploadFile, _downloadFile, x));
 }
-function to_candid_variant_n2(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): {
+function to_candid_UserRole_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): _UserRole {
+    return to_candid_variant_n4(_uploadFile, _downloadFile, value);
+}
+function to_candid_ValidationRecord_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: ValidationRecord): _ValidationRecord {
+    return to_candid_record_n2(_uploadFile, _downloadFile, value);
+}
+function to_candid_record_n2(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    id: bigint;
+    validationStatus: string;
+    victimId: bigint;
+    needType: string;
+    needDescription: string;
+    createdBy: Principal;
+    createdDate: bigint;
+    validatorNotes: string;
+    estimatedValue: bigint;
+    validationDate?: bigint;
+    validatedBy?: Principal;
+}): {
+    id: bigint;
+    validationStatus: string;
+    victimId: bigint;
+    needType: string;
+    needDescription: string;
+    createdBy: Principal;
+    createdDate: bigint;
+    validatorNotes: string;
+    estimatedValue: bigint;
+    validationDate: [] | [bigint];
+    validatedBy: [] | [Principal];
+} {
+    return {
+        id: value.id,
+        validationStatus: value.validationStatus,
+        victimId: value.victimId,
+        needType: value.needType,
+        needDescription: value.needDescription,
+        createdBy: value.createdBy,
+        createdDate: value.createdDate,
+        validatorNotes: value.validatorNotes,
+        estimatedValue: value.estimatedValue,
+        validationDate: value.validationDate ? candid_some(value.validationDate) : candid_none(),
+        validatedBy: value.validatedBy ? candid_some(value.validatedBy) : candid_none()
+    };
+}
+function to_candid_variant_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): {
     admin: null;
 } | {
     user: null;

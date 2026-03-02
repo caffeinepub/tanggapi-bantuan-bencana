@@ -1,15 +1,14 @@
 import { Toaster } from "@/components/ui/sonner";
-import { useQueryClient } from "@tanstack/react-query";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { createRootRoute, createRoute } from "@tanstack/react-router";
-import { useEffect, useRef } from "react";
 import Layout from "./components/Layout";
-import { useActor } from "./hooks/useActor";
 import AdminPage from "./pages/AdminPage";
 import BerandaPage from "./pages/BerandaPage";
+import PenerimaBantuanPage from "./pages/PenerimaBantuanPage";
 import PetaPage from "./pages/PetaPage";
 import PublikasiPage from "./pages/PublikasiPage";
 import TanggapiPage from "./pages/TanggapiPage";
+import ValidasiPage from "./pages/ValidasiPage";
 
 // Root route with layout
 const rootRoute = createRootRoute({
@@ -56,12 +55,26 @@ const adminRoute = createRoute({
   component: AdminPage,
 });
 
+const validasiRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/validasi",
+  component: ValidasiPage,
+});
+
+const penerimaBantuanRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/penerima-bantuan",
+  component: PenerimaBantuanPage,
+});
+
 const routeTree = rootRoute.addChildren([
   berandaRoute,
   petaRoute,
   tanggapiRoute,
   publikasiRoute,
   adminRoute,
+  validasiRoute,
+  penerimaBantuanRoute,
 ]);
 
 const router = createRouter({ routeTree });
@@ -72,31 +85,6 @@ declare module "@tanstack/react-router" {
   }
 }
 
-function DataInitializer() {
-  const { actor, isFetching } = useActor();
-  const queryClient = useQueryClient();
-  const initialized = useRef(false);
-
-  useEffect(() => {
-    if (!actor || isFetching || initialized.current) return;
-    initialized.current = true;
-
-    actor
-      .initializeSampleData()
-      .then(() => {
-        queryClient.invalidateQueries();
-      })
-      .catch(console.error);
-  }, [actor, isFetching, queryClient]);
-
-  return null;
-}
-
 export default function App() {
-  return (
-    <>
-      <DataInitializer />
-      <RouterProvider router={router} />
-    </>
-  );
+  return <RouterProvider router={router} />;
 }

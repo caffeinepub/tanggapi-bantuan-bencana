@@ -20,6 +20,39 @@ export const AidRecipient = IDL.Record({
   'distributionStatus' : IDL.Text,
   'subdistrict' : IDL.Text,
 });
+export const BantuanPenerima = IDL.Record({
+  'id' : IDL.Nat,
+  'nik' : IDL.Text,
+  'updatedDate' : IDL.Int,
+  'tindakLanjutKeterangan' : IDL.Text,
+  'alamat' : IDL.Text,
+  'nama' : IDL.Text,
+  'createdBy' : IDL.Principal,
+  'createdDate' : IDL.Int,
+  'instansiPembantu' : IDL.Text,
+  'keterangan' : IDL.Text,
+  'validasiStatus' : IDL.Text,
+  'prosesTindakLanjut' : IDL.Text,
+  'keperluanBantuan' : IDL.Text,
+});
+export const DisasterVictim = IDL.Record({
+  'id' : IDL.Nat,
+  'rt' : IDL.Text,
+  'rw' : IDL.Text,
+  'nik' : IDL.Text,
+  'kabupaten' : IDL.Text,
+  'fullName' : IDL.Text,
+  'lossDescription' : IDL.Text,
+  'disasterDate' : IDL.Int,
+  'kecamatan' : IDL.Text,
+  'address' : IDL.Text,
+  'disasterType' : IDL.Text,
+  'physicalCondition' : IDL.Text,
+  'registrationDate' : IDL.Int,
+  'damageLevel' : IDL.Text,
+  'registeredBy' : IDL.Principal,
+  'kelurahan' : IDL.Text,
+});
 export const FooterLink = IDL.Record({
   'id' : IDL.Nat,
   'url' : IDL.Text,
@@ -45,23 +78,52 @@ export const Report = IDL.Record({
   'description' : IDL.Text,
   'reportDate' : IDL.Int,
 });
+export const ValidationRecord = IDL.Record({
+  'id' : IDL.Nat,
+  'validationStatus' : IDL.Text,
+  'victimId' : IDL.Nat,
+  'needType' : IDL.Text,
+  'needDescription' : IDL.Text,
+  'createdBy' : IDL.Principal,
+  'createdDate' : IDL.Int,
+  'validatorNotes' : IDL.Text,
+  'estimatedValue' : IDL.Nat,
+  'validationDate' : IDL.Opt(IDL.Int),
+  'validatedBy' : IDL.Opt(IDL.Principal),
+});
 export const UserRole = IDL.Variant({
   'admin' : IDL.Null,
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
-export const UserProfile = IDL.Record({ 'name' : IDL.Text });
+export const UserEntry = IDL.Record({
+  'principal' : IDL.Principal,
+  'role' : IDL.Text,
+});
+export const ValidationStats = IDL.Record({
+  'byValidationStatus' : IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat)),
+  'totalVictims' : IDL.Nat,
+  'byDisasterType' : IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat)),
+});
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'addAidRecipient' : IDL.Func([AidRecipient], [IDL.Nat], []),
+  'addBantuanPenerima' : IDL.Func([BantuanPenerima], [], []),
+  'addDisasterVictim' : IDL.Func([DisasterVictim], [IDL.Nat], []),
   'addFooterLink' : IDL.Func([FooterLink], [IDL.Nat], []),
   'addPublication' : IDL.Func([Publication], [IDL.Nat], []),
   'addReport' : IDL.Func([Report], [IDL.Nat], []),
+  'addValidationRecord' : IDL.Func([ValidationRecord], [IDL.Nat], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'assignValidatorRole' : IDL.Func([IDL.Principal], [], []),
   'deleteAidRecipient' : IDL.Func([IDL.Nat], [IDL.Bool], []),
+  'deleteBantuanPenerima' : IDL.Func([IDL.Nat], [IDL.Bool], []),
+  'deleteDisasterVictim' : IDL.Func([IDL.Nat], [], []),
   'deleteFooterLink' : IDL.Func([IDL.Nat], [IDL.Bool], []),
   'deletePublication' : IDL.Func([IDL.Nat], [IDL.Bool], []),
+  'deleteReport' : IDL.Func([IDL.Nat], [IDL.Bool], []),
+  'deleteValidationRecord' : IDL.Func([IDL.Nat], [], []),
   'filterAidRecipientsByDistrict' : IDL.Func(
       [IDL.Text],
       [IDL.Vec(AidRecipient)],
@@ -77,6 +139,11 @@ export const idlService = IDL.Service({
       [IDL.Vec(AidRecipient)],
       ['query'],
     ),
+  'filterBantuanPenerimaByStatus' : IDL.Func(
+      [IDL.Text],
+      [IDL.Vec(BantuanPenerima)],
+      ['query'],
+    ),
   'filterReportsByStatus' : IDL.Func([IDL.Text], [IDL.Vec(Report)], ['query']),
   'filterReportsByTopic' : IDL.Func([IDL.Text], [IDL.Vec(Report)], ['query']),
   'getAidRecipientById' : IDL.Func(
@@ -85,10 +152,33 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'getAllAidRecipients' : IDL.Func([], [IDL.Vec(AidRecipient)], ['query']),
+  'getAllBantuanPenerima' : IDL.Func([], [IDL.Vec(BantuanPenerima)], ['query']),
+  'getAllDisasterVictims' : IDL.Func([], [IDL.Vec(DisasterVictim)], ['query']),
   'getAllPublications' : IDL.Func([], [IDL.Vec(Publication)], ['query']),
   'getAllReports' : IDL.Func([], [IDL.Vec(Report)], ['query']),
-  'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
+  'getAllUsers' : IDL.Func([], [IDL.Vec(UserEntry)], ['query']),
+  'getAllValidationRecords' : IDL.Func(
+      [],
+      [IDL.Vec(ValidationRecord)],
+      ['query'],
+    ),
+  'getAllValidators' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
+  'getBantuanPenerimaById' : IDL.Func(
+      [IDL.Nat],
+      [IDL.Opt(BantuanPenerima)],
+      ['query'],
+    ),
+  'getCallerUserProfile' : IDL.Func(
+      [],
+      [IDL.Opt(IDL.Record({ 'name' : IDL.Text }))],
+      ['query'],
+    ),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+  'getDisasterVictimById' : IDL.Func(
+      [IDL.Nat],
+      [IDL.Opt(DisasterVictim)],
+      ['query'],
+    ),
   'getFooterLinks' : IDL.Func([], [IDL.Vec(FooterLink)], ['query']),
   'getPublicationById' : IDL.Func([IDL.Nat], [IDL.Opt(Publication)], ['query']),
   'getRecipientsByAidType' : IDL.Func(
@@ -120,21 +210,47 @@ export const idlService = IDL.Service({
   'getTotalRecipients' : IDL.Func([], [IDL.Nat], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
-      [IDL.Opt(UserProfile)],
+      [IDL.Opt(IDL.Record({ 'name' : IDL.Text }))],
       ['query'],
     ),
+  'getValidationRecordsByVictim' : IDL.Func(
+      [IDL.Nat],
+      [IDL.Vec(ValidationRecord)],
+      ['query'],
+    ),
+  'getValidationStats' : IDL.Func([], [ValidationStats], ['query']),
   'initializeSampleData' : IDL.Func([], [], []),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-  'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'isCallerAdminOrValidator' : IDL.Func([], [IDL.Bool], ['query']),
+  'isCallerValidator' : IDL.Func([], [IDL.Bool], ['query']),
+  'revokeValidatorRole' : IDL.Func([IDL.Principal], [], []),
+  'saveCallerUserProfile' : IDL.Func(
+      [IDL.Record({ 'name' : IDL.Text })],
+      [],
+      [],
+    ),
   'searchAidRecipients' : IDL.Func(
       [IDL.Text],
       [IDL.Vec(AidRecipient)],
       ['query'],
     ),
   'updateAidRecipient' : IDL.Func([AidRecipient], [IDL.Bool], []),
+  'updateBantuanPenerima' : IDL.Func([BantuanPenerima], [], []),
+  'updateBantuanPenerimaStatus' : IDL.Func(
+      [IDL.Nat, IDL.Text, IDL.Text, IDL.Text],
+      [],
+      [],
+    ),
+  'updateDisasterVictim' : IDL.Func([DisasterVictim], [IDL.Bool], []),
   'updateFooterLink' : IDL.Func([FooterLink], [IDL.Bool], []),
   'updatePublication' : IDL.Func([Publication], [IDL.Bool], []),
   'updateReportStatus' : IDL.Func([IDL.Nat, IDL.Text], [IDL.Bool], []),
+  'updateValidationRecord' : IDL.Func([ValidationRecord], [IDL.Bool], []),
+  'updateValidationStatus' : IDL.Func(
+      [IDL.Nat, IDL.Text, IDL.Text, IDL.Principal],
+      [IDL.Bool],
+      [],
+    ),
 });
 
 export const idlInitArgs = [];
@@ -151,6 +267,39 @@ export const idlFactory = ({ IDL }) => {
     'registrationDate' : IDL.Int,
     'distributionStatus' : IDL.Text,
     'subdistrict' : IDL.Text,
+  });
+  const BantuanPenerima = IDL.Record({
+    'id' : IDL.Nat,
+    'nik' : IDL.Text,
+    'updatedDate' : IDL.Int,
+    'tindakLanjutKeterangan' : IDL.Text,
+    'alamat' : IDL.Text,
+    'nama' : IDL.Text,
+    'createdBy' : IDL.Principal,
+    'createdDate' : IDL.Int,
+    'instansiPembantu' : IDL.Text,
+    'keterangan' : IDL.Text,
+    'validasiStatus' : IDL.Text,
+    'prosesTindakLanjut' : IDL.Text,
+    'keperluanBantuan' : IDL.Text,
+  });
+  const DisasterVictim = IDL.Record({
+    'id' : IDL.Nat,
+    'rt' : IDL.Text,
+    'rw' : IDL.Text,
+    'nik' : IDL.Text,
+    'kabupaten' : IDL.Text,
+    'fullName' : IDL.Text,
+    'lossDescription' : IDL.Text,
+    'disasterDate' : IDL.Int,
+    'kecamatan' : IDL.Text,
+    'address' : IDL.Text,
+    'disasterType' : IDL.Text,
+    'physicalCondition' : IDL.Text,
+    'registrationDate' : IDL.Int,
+    'damageLevel' : IDL.Text,
+    'registeredBy' : IDL.Principal,
+    'kelurahan' : IDL.Text,
   });
   const FooterLink = IDL.Record({
     'id' : IDL.Nat,
@@ -177,23 +326,52 @@ export const idlFactory = ({ IDL }) => {
     'description' : IDL.Text,
     'reportDate' : IDL.Int,
   });
+  const ValidationRecord = IDL.Record({
+    'id' : IDL.Nat,
+    'validationStatus' : IDL.Text,
+    'victimId' : IDL.Nat,
+    'needType' : IDL.Text,
+    'needDescription' : IDL.Text,
+    'createdBy' : IDL.Principal,
+    'createdDate' : IDL.Int,
+    'validatorNotes' : IDL.Text,
+    'estimatedValue' : IDL.Nat,
+    'validationDate' : IDL.Opt(IDL.Int),
+    'validatedBy' : IDL.Opt(IDL.Principal),
+  });
   const UserRole = IDL.Variant({
     'admin' : IDL.Null,
     'user' : IDL.Null,
     'guest' : IDL.Null,
   });
-  const UserProfile = IDL.Record({ 'name' : IDL.Text });
+  const UserEntry = IDL.Record({
+    'principal' : IDL.Principal,
+    'role' : IDL.Text,
+  });
+  const ValidationStats = IDL.Record({
+    'byValidationStatus' : IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat)),
+    'totalVictims' : IDL.Nat,
+    'byDisasterType' : IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat)),
+  });
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'addAidRecipient' : IDL.Func([AidRecipient], [IDL.Nat], []),
+    'addBantuanPenerima' : IDL.Func([BantuanPenerima], [], []),
+    'addDisasterVictim' : IDL.Func([DisasterVictim], [IDL.Nat], []),
     'addFooterLink' : IDL.Func([FooterLink], [IDL.Nat], []),
     'addPublication' : IDL.Func([Publication], [IDL.Nat], []),
     'addReport' : IDL.Func([Report], [IDL.Nat], []),
+    'addValidationRecord' : IDL.Func([ValidationRecord], [IDL.Nat], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'assignValidatorRole' : IDL.Func([IDL.Principal], [], []),
     'deleteAidRecipient' : IDL.Func([IDL.Nat], [IDL.Bool], []),
+    'deleteBantuanPenerima' : IDL.Func([IDL.Nat], [IDL.Bool], []),
+    'deleteDisasterVictim' : IDL.Func([IDL.Nat], [], []),
     'deleteFooterLink' : IDL.Func([IDL.Nat], [IDL.Bool], []),
     'deletePublication' : IDL.Func([IDL.Nat], [IDL.Bool], []),
+    'deleteReport' : IDL.Func([IDL.Nat], [IDL.Bool], []),
+    'deleteValidationRecord' : IDL.Func([IDL.Nat], [], []),
     'filterAidRecipientsByDistrict' : IDL.Func(
         [IDL.Text],
         [IDL.Vec(AidRecipient)],
@@ -209,6 +387,11 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(AidRecipient)],
         ['query'],
       ),
+    'filterBantuanPenerimaByStatus' : IDL.Func(
+        [IDL.Text],
+        [IDL.Vec(BantuanPenerima)],
+        ['query'],
+      ),
     'filterReportsByStatus' : IDL.Func(
         [IDL.Text],
         [IDL.Vec(Report)],
@@ -221,10 +404,41 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'getAllAidRecipients' : IDL.Func([], [IDL.Vec(AidRecipient)], ['query']),
+    'getAllBantuanPenerima' : IDL.Func(
+        [],
+        [IDL.Vec(BantuanPenerima)],
+        ['query'],
+      ),
+    'getAllDisasterVictims' : IDL.Func(
+        [],
+        [IDL.Vec(DisasterVictim)],
+        ['query'],
+      ),
     'getAllPublications' : IDL.Func([], [IDL.Vec(Publication)], ['query']),
     'getAllReports' : IDL.Func([], [IDL.Vec(Report)], ['query']),
-    'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
+    'getAllUsers' : IDL.Func([], [IDL.Vec(UserEntry)], ['query']),
+    'getAllValidationRecords' : IDL.Func(
+        [],
+        [IDL.Vec(ValidationRecord)],
+        ['query'],
+      ),
+    'getAllValidators' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
+    'getBantuanPenerimaById' : IDL.Func(
+        [IDL.Nat],
+        [IDL.Opt(BantuanPenerima)],
+        ['query'],
+      ),
+    'getCallerUserProfile' : IDL.Func(
+        [],
+        [IDL.Opt(IDL.Record({ 'name' : IDL.Text }))],
+        ['query'],
+      ),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+    'getDisasterVictimById' : IDL.Func(
+        [IDL.Nat],
+        [IDL.Opt(DisasterVictim)],
+        ['query'],
+      ),
     'getFooterLinks' : IDL.Func([], [IDL.Vec(FooterLink)], ['query']),
     'getPublicationById' : IDL.Func(
         [IDL.Nat],
@@ -260,21 +474,47 @@ export const idlFactory = ({ IDL }) => {
     'getTotalRecipients' : IDL.Func([], [IDL.Nat], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
-        [IDL.Opt(UserProfile)],
+        [IDL.Opt(IDL.Record({ 'name' : IDL.Text }))],
         ['query'],
       ),
+    'getValidationRecordsByVictim' : IDL.Func(
+        [IDL.Nat],
+        [IDL.Vec(ValidationRecord)],
+        ['query'],
+      ),
+    'getValidationStats' : IDL.Func([], [ValidationStats], ['query']),
     'initializeSampleData' : IDL.Func([], [], []),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-    'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'isCallerAdminOrValidator' : IDL.Func([], [IDL.Bool], ['query']),
+    'isCallerValidator' : IDL.Func([], [IDL.Bool], ['query']),
+    'revokeValidatorRole' : IDL.Func([IDL.Principal], [], []),
+    'saveCallerUserProfile' : IDL.Func(
+        [IDL.Record({ 'name' : IDL.Text })],
+        [],
+        [],
+      ),
     'searchAidRecipients' : IDL.Func(
         [IDL.Text],
         [IDL.Vec(AidRecipient)],
         ['query'],
       ),
     'updateAidRecipient' : IDL.Func([AidRecipient], [IDL.Bool], []),
+    'updateBantuanPenerima' : IDL.Func([BantuanPenerima], [], []),
+    'updateBantuanPenerimaStatus' : IDL.Func(
+        [IDL.Nat, IDL.Text, IDL.Text, IDL.Text],
+        [],
+        [],
+      ),
+    'updateDisasterVictim' : IDL.Func([DisasterVictim], [IDL.Bool], []),
     'updateFooterLink' : IDL.Func([FooterLink], [IDL.Bool], []),
     'updatePublication' : IDL.Func([Publication], [IDL.Bool], []),
     'updateReportStatus' : IDL.Func([IDL.Nat, IDL.Text], [IDL.Bool], []),
+    'updateValidationRecord' : IDL.Func([ValidationRecord], [IDL.Bool], []),
+    'updateValidationStatus' : IDL.Func(
+        [IDL.Nat, IDL.Text, IDL.Text, IDL.Principal],
+        [IDL.Bool],
+        [],
+      ),
   });
 };
 

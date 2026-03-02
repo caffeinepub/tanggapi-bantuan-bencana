@@ -1,10 +1,14 @@
+import type { Principal } from "@icp-sdk/core/principal";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   AidRecipient,
+  DisasterVictim,
   FooterLink,
   Publication,
   Report,
-  UserProfile,
+  UserEntry,
+  ValidationRecord,
+  ValidationStats,
 } from "../backend.d";
 import { UserRole } from "../backend.d";
 import { useActor } from "./useActor";
@@ -291,7 +295,7 @@ export function useIsCallerAdmin() {
 
 export function useGetCallerUserProfile() {
   const { actor, isFetching } = useActor();
-  return useQuery<UserProfile | null>({
+  return useQuery<{ name: string } | null>({
     queryKey: ["callerUserProfile"],
     queryFn: async () => {
       if (!actor) return null;
@@ -311,6 +315,35 @@ export function useInitializeSampleData() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries();
+    },
+  });
+}
+
+// ─── User Management ──────────────────────────────────────────────────────────
+
+export function useGetAllUsers() {
+  const { actor, isFetching } = useActor();
+  return useQuery<UserEntry[]>({
+    queryKey: ["allUsers"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getAllUsers();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useAssignUserRole() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ user, role }: { user: Principal; role: UserRole }) => {
+      if (!actor) throw new Error("Actor not ready");
+      return actor.assignCallerUserRole(user, role);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["allUsers"] });
+      queryClient.invalidateQueries({ queryKey: ["isCallerAdmin"] });
     },
   });
 }
@@ -367,6 +400,361 @@ export function useDeleteFooterLink() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["footerLinks"] });
+    },
+  });
+}
+
+// ─── Disaster Victims ─────────────────────────────────────────────────────────
+
+export function useGetAllDisasterVictims() {
+  const { actor, isFetching } = useActor();
+  return useQuery<DisasterVictim[]>({
+    queryKey: ["disasterVictims"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getAllDisasterVictims();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useAddDisasterVictim() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (victim: DisasterVictim) => {
+      if (!actor) throw new Error("Actor not ready");
+      return actor.addDisasterVictim(victim);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["disasterVictims"] });
+      queryClient.invalidateQueries({ queryKey: ["validationStats"] });
+    },
+  });
+}
+
+export function useUpdateDisasterVictim() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (victim: DisasterVictim) => {
+      if (!actor) throw new Error("Actor not ready");
+      return actor.updateDisasterVictim(victim);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["disasterVictims"] });
+    },
+  });
+}
+
+export function useDeleteDisasterVictim() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("Actor not ready");
+      return actor.deleteDisasterVictim(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["disasterVictims"] });
+      queryClient.invalidateQueries({ queryKey: ["validationRecords"] });
+      queryClient.invalidateQueries({ queryKey: ["validationStats"] });
+    },
+  });
+}
+
+// ─── Validator Auth ───────────────────────────────────────────────────────────
+
+export function useIsCallerValidator() {
+  const { actor, isFetching } = useActor();
+  return useQuery<boolean>({
+    queryKey: ["isCallerValidator"],
+    queryFn: async () => {
+      if (!actor) return false;
+      return actor.isCallerValidator();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useIsCallerAdminOrValidator() {
+  const { actor, isFetching } = useActor();
+  return useQuery<boolean>({
+    queryKey: ["isCallerAdminOrValidator"],
+    queryFn: async () => {
+      if (!actor) return false;
+      return actor.isCallerAdminOrValidator();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+// ─── Validation Records ───────────────────────────────────────────────────────
+
+export function useGetAllValidationRecords(isAdminOrValidator?: boolean) {
+  const { actor, isFetching } = useActor();
+  return useQuery<ValidationRecord[]>({
+    queryKey: ["validationRecords"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getAllValidationRecords();
+    },
+    enabled: !!actor && !isFetching && (isAdminOrValidator ?? true),
+  });
+}
+
+export function useGetValidationRecordsByVictim(victimId: bigint | null) {
+  const { actor, isFetching } = useActor();
+  return useQuery<ValidationRecord[]>({
+    queryKey: ["validationRecordsByVictim", victimId?.toString()],
+    queryFn: async () => {
+      if (!actor || victimId === null) return [];
+      return actor.getValidationRecordsByVictim(victimId);
+    },
+    enabled: !!actor && !isFetching && victimId !== null,
+  });
+}
+
+export function useAddValidationRecord() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (record: ValidationRecord) => {
+      if (!actor) throw new Error("Actor not ready");
+      return actor.addValidationRecord(record);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["validationRecords"] });
+      queryClient.invalidateQueries({
+        queryKey: ["validationRecordsByVictim"],
+      });
+      queryClient.invalidateQueries({ queryKey: ["validationStats"] });
+    },
+  });
+}
+
+export function useUpdateValidationRecord() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (record: ValidationRecord) => {
+      if (!actor) throw new Error("Actor not ready");
+      return actor.updateValidationRecord(record);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["validationRecords"] });
+      queryClient.invalidateQueries({
+        queryKey: ["validationRecordsByVictim"],
+      });
+    },
+  });
+}
+
+export function useUpdateValidationStatus() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      status,
+      notes,
+      validatedBy,
+    }: {
+      id: bigint;
+      status: string;
+      notes: string;
+      validatedBy: Principal;
+    }) => {
+      if (!actor) throw new Error("Actor not ready");
+      return actor.updateValidationStatus(id, status, notes, validatedBy);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["validationRecords"] });
+      queryClient.invalidateQueries({
+        queryKey: ["validationRecordsByVictim"],
+      });
+      queryClient.invalidateQueries({ queryKey: ["validationStats"] });
+    },
+  });
+}
+
+export function useDeleteValidationRecord() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("Actor not ready");
+      return actor.deleteValidationRecord(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["validationRecords"] });
+      queryClient.invalidateQueries({
+        queryKey: ["validationRecordsByVictim"],
+      });
+      queryClient.invalidateQueries({ queryKey: ["validationStats"] });
+    },
+  });
+}
+
+export function useGetValidationStats() {
+  const { actor, isFetching } = useActor();
+  return useQuery<ValidationStats>({
+    queryKey: ["validationStats"],
+    queryFn: async () => {
+      if (!actor)
+        return {
+          totalVictims: BigInt(0),
+          byDisasterType: [],
+          byValidationStatus: [],
+        };
+      return actor.getValidationStats();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+// ─── Validator Management (Admin Only) ────────────────────────────────────────
+
+export function useGetAllValidators() {
+  const { actor, isFetching } = useActor();
+  return useQuery<Principal[]>({
+    queryKey: ["allValidators"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getAllValidators();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useAssignValidatorRole() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (user: Principal) => {
+      if (!actor) throw new Error("Actor not ready");
+      return actor.assignValidatorRole(user);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["allValidators"] });
+      queryClient.invalidateQueries({ queryKey: ["isCallerValidator"] });
+    },
+  });
+}
+
+export function useRevokeValidatorRole() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (user: Principal) => {
+      if (!actor) throw new Error("Actor not ready");
+      return actor.revokeValidatorRole(user);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["allValidators"] });
+    },
+  });
+}
+
+// ─── Bantuan Penerima ─────────────────────────────────────────────────────────
+
+import type { BantuanPenerima } from "../backend.d";
+
+export function useGetAllBantuanPenerima() {
+  const { actor, isFetching } = useActor();
+  return useQuery<BantuanPenerima[]>({
+    queryKey: ["bantuanPenerima"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getAllBantuanPenerima();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useFilterBantuanPenerimaByStatus(status: string) {
+  const { actor, isFetching } = useActor();
+  return useQuery<BantuanPenerima[]>({
+    queryKey: ["bantuanPenerimaByStatus", status],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.filterBantuanPenerimaByStatus(status);
+    },
+    enabled: !!actor && !isFetching && status !== "semua",
+  });
+}
+
+export function useAddBantuanPenerima() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: BantuanPenerima) => {
+      if (!actor) throw new Error("Actor not ready");
+      return actor.addBantuanPenerima(data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bantuanPenerima"] });
+      queryClient.invalidateQueries({ queryKey: ["bantuanPenerimaByStatus"] });
+    },
+  });
+}
+
+export function useUpdateBantuanPenerima() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: BantuanPenerima) => {
+      if (!actor) throw new Error("Actor not ready");
+      return actor.updateBantuanPenerima(data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bantuanPenerima"] });
+      queryClient.invalidateQueries({ queryKey: ["bantuanPenerimaByStatus"] });
+    },
+  });
+}
+
+export function useUpdateBantuanPenerimaStatus() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      validasiStatus,
+      tindakLanjutKeterangan,
+      instansiPembantu,
+    }: {
+      id: bigint;
+      validasiStatus: string;
+      tindakLanjutKeterangan: string;
+      instansiPembantu: string;
+    }) => {
+      if (!actor) throw new Error("Actor not ready");
+      return actor.updateBantuanPenerimaStatus(
+        id,
+        validasiStatus,
+        tindakLanjutKeterangan,
+        instansiPembantu,
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bantuanPenerima"] });
+      queryClient.invalidateQueries({ queryKey: ["bantuanPenerimaByStatus"] });
+    },
+  });
+}
+
+export function useDeleteBantuanPenerima() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("Actor not ready");
+      return actor.deleteBantuanPenerima(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bantuanPenerima"] });
+      queryClient.invalidateQueries({ queryKey: ["bantuanPenerimaByStatus"] });
     },
   });
 }
