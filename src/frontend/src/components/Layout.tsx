@@ -46,10 +46,10 @@ export default function Layout() {
           <div className="flex items-center justify-between h-16">
             {/* Logo + Brand */}
             <Link to="/" className="flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-white/10 p-0.5">
+              <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-white p-0.5">
                 <img
-                  src="/assets/generated/tanggapi-logo-transparent.dim_200x200.png"
-                  alt="TANGGAPI Logo"
+                  src="/assets/uploads/v-AbSTb_400x400-1--1.jpg"
+                  alt="Relawan TIK Indonesia Logo"
                   className="w-full h-full object-contain"
                 />
               </div>
@@ -238,10 +238,10 @@ export default function Layout() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
             <div>
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-9 h-9 rounded-lg overflow-hidden bg-white/10 p-0.5 flex-shrink-0">
+                <div className="w-9 h-9 rounded-lg overflow-hidden bg-white p-0.5 flex-shrink-0">
                   <img
-                    src="/assets/generated/tanggapi-logo-transparent.dim_200x200.png"
-                    alt="TANGGAPI"
+                    src="/assets/uploads/v-AbSTb_400x400-1--1.jpg"
+                    alt="Relawan TIK Indonesia"
                     className="w-full h-full object-contain"
                   />
                 </div>
