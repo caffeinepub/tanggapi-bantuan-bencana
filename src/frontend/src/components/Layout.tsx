@@ -6,6 +6,7 @@ import {
   ClipboardCheck,
   HandHeart,
   Home,
+  KeyRound,
   LogIn,
   LogOut,
   MapPin,
@@ -112,13 +113,25 @@ export default function Layout() {
               <Link
                 to="/admin"
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  currentPath.startsWith("/admin")
+                  currentPath === "/admin"
                     ? "bg-gold/30 text-gold"
                     : "text-white/75 hover:text-white hover:bg-white/10"
                 }`}
               >
                 <Shield className="w-4 h-4" />
                 Admin
+              </Link>
+
+              <Link
+                to="/admin-panel"
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  currentPath.startsWith("/admin-panel")
+                    ? "bg-amber-500/30 text-amber-300"
+                    : "text-white/75 hover:text-white hover:bg-white/10"
+                }`}
+              >
+                <KeyRound className="w-4 h-4" />
+                Admin Panel
               </Link>
             </nav>
 
@@ -232,12 +245,25 @@ export default function Layout() {
                   to="/admin"
                   onClick={() => setMobileMenuOpen(false)}
                   className={`flex items-center gap-2 px-4 py-2.5 rounded-md text-sm font-medium transition-all ${
-                    currentPath.startsWith("/admin")
+                    currentPath === "/admin"
                       ? "bg-white/20 text-white"
                       : "text-white/75 hover:text-white hover:bg-white/10"
                   }`}
                 >
                   <Shield className="w-4 h-4" />
+                  Admin
+                </Link>
+
+                <Link
+                  to="/admin-panel"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-md text-sm font-medium transition-all ${
+                    currentPath.startsWith("/admin-panel")
+                      ? "bg-amber-500/30 text-amber-300"
+                      : "text-white/75 hover:text-white hover:bg-white/10"
+                  }`}
+                >
+                  <KeyRound className="w-4 h-4" />
                   Admin Panel
                 </Link>
 

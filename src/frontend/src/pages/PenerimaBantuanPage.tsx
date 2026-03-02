@@ -55,6 +55,7 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
+  Database,
   FileText,
   Link2,
   Loader2,
@@ -70,6 +71,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { BantuanPenerima, DisasterVictim } from "../backend.d";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useAddBantuanPenerima,
   useDeleteBantuanPenerima,
@@ -362,6 +364,7 @@ function BantuanFormDialog({
   const addBantuan = useAddBantuanPenerima();
   const updateBantuan = useUpdateBantuanPenerima();
   const { data: victims = [] } = useGetAllDisasterVictims();
+  const { identity } = useInternetIdentity();
 
   const applyVictimToForm = useCallback((victim: DisasterVictim) => {
     const addrParts = [
@@ -439,6 +442,11 @@ function BantuanFormDialog({
       toast.error("Keperluan bantuan wajib diisi");
       return;
     }
+    const principal = identity?.getPrincipal();
+    if (!principal) {
+      toast.error("Silakan login terlebih dahulu untuk menambah data");
+      return;
+    }
     try {
       const now = BigInt(Date.now());
       if (editing) {
@@ -452,7 +460,7 @@ function BantuanFormDialog({
         await addBantuan.mutateAsync({
           id: newBigIntId(),
           ...form,
-          createdBy: {} as never,
+          createdBy: principal,
           createdDate: now,
           updatedDate: now,
         });
@@ -838,6 +846,82 @@ function SummaryCards({ data }: { data: BantuanPenerima[] }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
+// ─── Sample Data ──────────────────────────────────────────────────────────────
+
+const SAMPLE_BANTUAN_DATA = [
+  {
+    nik: "1101010101010001",
+    nama: "Ahmad Fauzi",
+    alamat:
+      "Jl. Pahlawan No. 12, RT 02/RW 03, Desa Peukan Bada, Kec. Peukan Bada, Aceh Besar",
+    keperluanBantuan:
+      "Perbaikan rumah rusak berat akibat banjir, kebutuhan logistik harian (sembako), dan obat-obatan",
+    keterangan:
+      "Korban banjir bandang 2024, rumah terendam 2 meter selama 3 hari",
+    prosesTindakLanjut:
+      "Tim BPBD sudah survey lokasi, sedang menunggu anggaran rehab",
+    instansiPembantu: "BPBD Aceh Besar",
+    validasiStatus: "diproses",
+    tindakLanjutKeterangan: "Sudah diverifikasi oleh tim lapangan BPBD",
+  },
+  {
+    nik: "1102020202020002",
+    nama: "Siti Rahmah",
+    alamat: "Gampong Pante Riek, Kec. Seunagan, Kab. Nagan Raya, Aceh",
+    keperluanBantuan:
+      "Bantuan hunian sementara, pakaian layak, dan kebutuhan bayi",
+    keterangan:
+      "Ibu dengan 2 anak balita, suami meninggal akibat gempa. Rumah roboh total",
+    prosesTindakLanjut: "Ditempatkan di huntara, menunggu pembangunan huntetap",
+    instansiPembantu: "Dinas Sosial Nagan Raya",
+    validasiStatus: "ditindaklanjuti",
+    tindakLanjutKeterangan: "Sudah menerima bantuan tahap 1, menunggu tahap 2",
+  },
+  {
+    nik: "1103030303030003",
+    nama: "Muhammadin",
+    alamat: "Desa Suak Perbesi, Kec. Johan Pahlawan, Kab. Aceh Barat",
+    keperluanBantuan:
+      "Modal usaha tani untuk memulai kembali, alat pertanian, dan bibit",
+    keterangan:
+      "Petani yang kehilangan lahan dan peralatan akibat longsor. 5 anggota keluarga",
+    prosesTindakLanjut:
+      "Menunggu validasi dari dinas pertanian untuk bantuan alat dan bibit",
+    instansiPembantu: "Dinas Pertanian Aceh Barat",
+    validasiStatus: "baru",
+    tindakLanjutKeterangan: "",
+  },
+  {
+    nik: "1104040404040004",
+    nama: "Nurlaila Dewi",
+    alamat: "Gampong Blang Baro, Kec. Krueng Barona Jaya, Aceh Besar",
+    keperluanBantuan:
+      "Renovasi rumah rusak sedang, perlengkapan dapur, dan kasur",
+    keterangan: "Janda lansia, 70 tahun. Rumah rusak sedang akibat banjir rob",
+    prosesTindakLanjut:
+      "Tim relawan RTIK sudah survey, data sudah dilaporkan ke BPBD",
+    instansiPembantu: "Relawan TIK Indonesia",
+    validasiStatus: "diproses",
+    tindakLanjutKeterangan:
+      "Data telah dilaporkan, menunggu SK penerima bantuan",
+  },
+  {
+    nik: "1105050505050005",
+    nama: "Teuku Iskandar",
+    alamat:
+      "Jl. Merdeka No. 45, Gampong Keude Bieng, Kec. Bireuen, Kab. Bireuen",
+    keperluanBantuan:
+      "Perbaikan atap rumah rusak berat, kebutuhan sanitasi dan air bersih",
+    keterangan:
+      "Kepala keluarga dengan 6 anggota, nelayan yang kehilangan perahu akibat abrasi",
+    prosesTindakLanjut: "Perlu koordinasi dengan Dinas PUPR dan Dinas Kelautan",
+    instansiPembantu: "BPBD Bireuen",
+    validasiStatus: "ditindaklanjuti",
+    tindakLanjutKeterangan:
+      "Bantuan perbaikan atap sudah selesai, bantuan perahu dalam proses pengadaan",
+  },
+];
+
 export default function PenerimaBantuanPage() {
   const [activeFilter, setActiveFilter] = useState<ValidasiFilter>("semua");
   const [search, setSearch] = useState("");
@@ -849,12 +933,15 @@ export default function PenerimaBantuanPage() {
   const [prefillVictim, setPrefillVictim] = useState<DisasterVictim | null>(
     null,
   );
+  const [isInitingData, setIsInitingData] = useState(false);
 
   const { data: allData, isLoading } = useGetAllBantuanPenerima();
   const { data: allVictims = [] } = useGetAllDisasterVictims();
   const { data: isAdminOrValidator } = useIsCallerAdminOrValidator();
   const { data: isAdmin } = useIsCallerAdmin();
   const deleteBantuan = useDeleteBantuanPenerima();
+  const addBantuanInit = useAddBantuanPenerima();
+  const { identity } = useInternetIdentity();
 
   // Check URL params for prefill victim (set by ValidasiPage)
   useEffect(() => {
@@ -925,6 +1012,34 @@ export default function PenerimaBantuanPage() {
     setExpandedId((prev) => (prev === id ? null : id));
   };
 
+  const handleInitSampleData = async () => {
+    const principal = identity?.getPrincipal();
+    if (!principal) {
+      toast.error("Silakan login terlebih dahulu");
+      return;
+    }
+    setIsInitingData(true);
+    try {
+      const now = BigInt(Date.now());
+      for (const item of SAMPLE_BANTUAN_DATA) {
+        await addBantuanInit.mutateAsync({
+          id: newBigIntId(),
+          ...item,
+          createdBy: principal,
+          createdDate: now,
+          updatedDate: now,
+        });
+      }
+      toast.success(
+        `${SAMPLE_BANTUAN_DATA.length} data sampel berhasil ditambahkan`,
+      );
+    } catch {
+      toast.error("Gagal menginisialisasi data sampel");
+    } finally {
+      setIsInitingData(false);
+    }
+  };
+
   const filterLabels: Record<ValidasiFilter, string> = {
     semua: "Semua",
     baru: "Baru",
@@ -958,13 +1073,30 @@ export default function PenerimaBantuanPage() {
                 </div>
               </div>
               {isAdminOrValidator && (
-                <Button
-                  onClick={openAdd}
-                  className="bg-gold hover:bg-gold/90 text-navy font-semibold gap-2 shrink-0"
-                >
-                  <Plus className="w-4 h-4" />
-                  Tambah Data
-                </Button>
+                <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                  {isAdmin && (!allData || allData.length === 0) && (
+                    <Button
+                      onClick={handleInitSampleData}
+                      disabled={isInitingData}
+                      variant="outline"
+                      className="border-white/30 bg-white/10 text-white hover:bg-white/20 gap-2 font-medium"
+                    >
+                      {isInitingData ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Database className="w-4 h-4" />
+                      )}
+                      {isInitingData ? "Memuat..." : "Init Data Sampel"}
+                    </Button>
+                  )}
+                  <Button
+                    onClick={openAdd}
+                    className="bg-gold hover:bg-gold/90 text-navy font-semibold gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Tambah Data
+                  </Button>
+                </div>
               )}
             </div>
           </motion.div>

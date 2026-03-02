@@ -3,6 +3,7 @@ import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { createRootRoute, createRoute } from "@tanstack/react-router";
 import Layout from "./components/Layout";
 import AdminPage from "./pages/AdminPage";
+import AdminPanelPasswordPage from "./pages/AdminPanelPasswordPage";
 import BerandaPage from "./pages/BerandaPage";
 import PenerimaBantuanPage from "./pages/PenerimaBantuanPage";
 import PetaPage from "./pages/PetaPage";
@@ -67,6 +68,12 @@ const penerimaBantuanRoute = createRoute({
   component: PenerimaBantuanPage,
 });
 
+const adminPanelRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin-panel",
+  component: AdminPanelPasswordPage,
+});
+
 const routeTree = rootRoute.addChildren([
   berandaRoute,
   petaRoute,
@@ -75,6 +82,7 @@ const routeTree = rootRoute.addChildren([
   adminRoute,
   validasiRoute,
   penerimaBantuanRoute,
+  adminPanelRoute,
 ]);
 
 const router = createRouter({ routeTree });

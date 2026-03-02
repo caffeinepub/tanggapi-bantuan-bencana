@@ -1,40 +1,37 @@
 # Tanggapi Bantuan Bencana
 
 ## Current State
-Aplikasi memiliki dua modul terpisah:
-- **Penerima Bantuan** (`/penerima-bantuan`) - form input data penerima bantuan pasca bencana (BantuanPenerima) dengan field: NIK, nama, alamat, keperluan, keterangan, proses tindak lanjut, instansi pembantu, status validasi
-- **Validasi Data Bencana** (`/validasi`) - form input data korban bencana (DisasterVictim) dengan field: NIK, nama lengkap, RT/RW, kelurahan, kecamatan, kabupaten, jenis bencana, kondisi fisik, tingkat kerusakan, dll.
-
-Kedua modul tidak saling terhubung - admin harus memasukkan data yang sama (NIK, nama, alamat) dua kali secara manual.
+Aplikasi sudah memiliki Admin Panel di route `/admin` yang hanya bisa diakses oleh pengguna yang login via Internet Identity dan memiliki role admin. Menu Admin sudah tampil di navbar untuk semua pengguna, dan Admin Panel punya tab: Penerima Bantuan, Pengaduan, Publikasi, Link Footer, Daftar User, dan Admin Validasi.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Di form Penerima Bantuan: tambahkan section "Cari dari Data Validasi" - dropdown/search yang mengambil data dari DisasterVictim berdasarkan NIK atau nama. Saat dipilih, otomatis mengisi field: NIK, nama, alamat (gabungan RT/RW/kelurahan/kecamatan/kabupaten), dan keperluan bantuan (dari needType validasi terkait jika ada)
-- Di halaman Validasi Data tab "Data Penduduk Terdampak": tambahkan tombol aksi "Buat Penerima Bantuan" pada setiap baris korban. Klik tombol akan membuka form PenerimaBantuan pre-filled dengan data korban tersebut
-- Indikator sinkronisasi: di tabel Penerima Bantuan, tampilkan badge/ikon jika data berasal dari Validasi Data (ada referensi victimId)
-- Di form tambah kebutuhan validasi (ValidationRecord): ketika memilih korban, otomatis menampilkan jika korban sudah terdaftar sebagai Penerima Bantuan
+- Halaman baru `/admin-panel` yang diproteksi dengan password sederhana (tanpa Internet Identity)
+- Form login password dengan field password dan tombol masuk
+- Setelah password benar, tampilkan konten Admin Panel lengkap (semua tab yang ada di AdminPage.tsx)
+- Password disimpan secara hardcoded atau di localStorage (frontend only, tidak ada backend)
+- Tombol "Keluar" di dalam panel untuk logout dari sesi password
+- Menu "Admin Panel" di navbar yang mengarah ke `/admin-panel`
 
 ### Modify
-- `PenerimaBantuanPage.tsx` - BantuanFormDialog: tambahkan section lookup dari DisasterVictim di bagian atas form, dengan combobox searchable yang memuat semua korban. Saat dipilih, auto-fill NIK, nama, alamat gabungan, dan set field `victimRef` (nama korban + jenis bencana) di keterangan
-- `ValidasiPage.tsx` - DisasterVictimsTab: tambahkan aksi tombol "Buat Penerima" di setiap baris, yang navigasi ke halaman Penerima Bantuan dengan state pre-filled data korban
+- Layout.tsx: Tambahkan item navigasi "Admin Panel" di navbar (desktop dan mobile) mengarah ke `/admin-panel`
+- App.tsx: Tambahkan route `/admin-panel` yang mengarah ke halaman baru AdminPanelPasswordPage
 
 ### Remove
 - Tidak ada yang dihapus
 
 ## Implementation Plan
-1. Di `PenerimaBantuanPage.tsx`:
-   - Import `useGetAllDisasterVictims` di BantuanFormDialog
-   - Tambah state `selectedVictimId` untuk melacak korban yang dipilih
-   - Tambah combobox searchable "Cari dari Data Validasi" di atas form - mencari berdasarkan nama/NIK dari daftar DisasterVictim
-   - Saat korban dipilih: auto-fill `nik`, `nama`, `alamat` (gabungan RT/RW/kelurahan/kecamatan/kabupaten), dan tambah prefix di `keterangan` dengan info bencana
-   - Tambah tombol "Hapus Pilihan" untuk membatalkan auto-fill
+1. Buat file `src/frontend/src/pages/AdminPanelPasswordPage.tsx`:
+   - State: `isAuthenticated` (boolean, dari sessionStorage)
+   - Password default: `"rtik2024"` (hardcoded, bisa diubah oleh developer)
+   - Tampilkan form login dengan field password dan tombol masuk jika belum autentikasi
+   - Jika password benar, simpan di `sessionStorage` dan tampilkan konten admin lengkap (salin dari AdminPage.tsx tapi tidak perlu cek Internet Identity)
+   - Tombol "Keluar" untuk menghapus sessionStorage dan kembali ke form login
+   - Desain halaman login: logo RTIK, judul "Panel Admin", field password, tombol masuk
 
-2. Di `ValidasiPage.tsx` - DisasterVictimsTab:
-   - Import `useNavigate` dari react-router-dom atau gunakan state passing via window.history
-   - Tambahkan tombol ikon "Buat Penerima Bantuan" (icon: UserPlus) di kolom Aksi setiap baris
-   - Saat diklik: navigasi ke `/penerima-bantuan` dengan query param `?victimId=X` atau simpan di sessionStorage, kemudian form PenerimaBantuan langsung membuka dialog dengan data pre-filled
+2. Edit `src/frontend/src/App.tsx`:
+   - Import AdminPanelPasswordPage
+   - Tambahkan route `/admin-panel`
 
-3. Di `PenerimaBantuanPage.tsx` - main component:
-   - Baca query param `victimId` dari URL saat halaman dimuat
-   - Jika ada, fetch data victim tersebut dan buka form dialog dengan data pre-filled
+3. Edit `src/frontend/src/components/Layout.tsx`:
+   - Tambahkan item "Admin Panel" ke navItems atau sebagai link khusus di navbar (desktop dan mobile) dengan ikon `KeyRound` dari lucide-react

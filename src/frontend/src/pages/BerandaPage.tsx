@@ -400,7 +400,7 @@ export default function BerandaPage() {
         </motion.div>
 
         {/* Quick Links */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Link
             to="/peta"
             className="group flex items-center justify-between bg-navy rounded-xl p-6 text-white hover:bg-navy-dark transition-colors shadow-navy"
@@ -428,6 +428,23 @@ export default function BerandaPage() {
               </p>
             </div>
             <ChevronRight className="w-6 h-6 text-muted-foreground group-hover:text-foreground transition-colors" />
+          </Link>
+          <Link
+            to="/penerima-bantuan"
+            className="group flex items-center justify-between bg-amber-50 rounded-xl p-6 border border-amber-200/60 shadow-card hover:shadow-card-hover hover:bg-amber-100/70 transition-all"
+          >
+            <div>
+              <h3 className="font-display font-bold text-xl mb-1 text-amber-900">
+                Data Penerima Bantuan
+              </h3>
+              <p className="text-amber-700/80 text-sm">
+                Data penerima bantuan pasca bencana
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-amber-500 group-hover:text-amber-600 transition-colors" />
+              <ChevronRight className="w-6 h-6 text-amber-400 group-hover:text-amber-700 transition-colors" />
+            </div>
           </Link>
         </div>
       </div>
