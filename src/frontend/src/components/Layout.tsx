@@ -13,7 +13,6 @@ import {
   MapPin,
   Menu,
   MessageSquare,
-  Shield,
   X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
@@ -111,18 +110,6 @@ export default function Layout() {
                   Validasi Data
                 </Link>
               )}
-
-              <Link
-                to="/admin"
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  currentPath === "/admin"
-                    ? "bg-gold/30 text-gold"
-                    : "text-white/75 hover:text-white hover:bg-white/10"
-                }`}
-              >
-                <Shield className="w-4 h-4" />
-                Admin
-              </Link>
 
               <Link
                 to="/admin-panel"
@@ -242,19 +229,6 @@ export default function Layout() {
                     )}
                   </Link>
                 )}
-
-                <Link
-                  to="/admin"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-md text-sm font-medium transition-all ${
-                    currentPath === "/admin"
-                      ? "bg-white/20 text-white"
-                      : "text-white/75 hover:text-white hover:bg-white/10"
-                  }`}
-                >
-                  <Shield className="w-4 h-4" />
-                  Admin
-                </Link>
 
                 <Link
                   to="/admin-panel"

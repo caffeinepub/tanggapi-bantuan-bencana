@@ -86,6 +86,7 @@ import {
   useUpdateBantuanPenerimaStatus,
 } from "../hooks/useQueries";
 import { formatDateId, newBigIntId } from "../utils/format";
+import { getSecretParameter } from "../utils/urlParams";
 
 // ─── Types & Constants ────────────────────────────────────────────────────────
 
@@ -449,11 +450,23 @@ function BantuanFormDialog({
       toast.error("Keperluan bantuan wajib diisi");
       return;
     }
-    if (!actor || isActorFetching || !isAdminReady) {
+    if (!actor || isActorFetching) {
       toast.error(
         "Sistem sedang memuat, harap tunggu sebentar lalu coba lagi.",
       );
       return;
+    }
+
+    // Re-init access control for password admin sessions before every write
+    const isPasswordAdmin =
+      sessionStorage.getItem("admin_panel_auth") === "true";
+    if (isPasswordAdmin && actor) {
+      const adminToken = getSecretParameter("caffeineAdminToken") || "";
+      try {
+        await actor._initializeAccessControlWithSecret(adminToken);
+      } catch (e) {
+        console.warn("re-init access control failed", e);
+      }
     }
 
     const principal = identity?.getPrincipal();
@@ -712,14 +725,16 @@ function BantuanFormDialog({
               updateBantuan.isPending ||
               isActorFetching ||
               !actor ||
-              !isAdminReady
+              (sessionStorage.getItem("admin_panel_auth") === "true" &&
+                !isAdminReady)
             }
             className="bg-primary text-white gap-2"
           >
             {(addBantuan.isPending ||
               updateBantuan.isPending ||
               isActorFetching ||
-              !isAdminReady) && <Loader2 className="w-4 h-4 animate-spin" />}
+              (sessionStorage.getItem("admin_panel_auth") === "true" &&
+                !isAdminReady)) && <Loader2 className="w-4 h-4 animate-spin" />}
             {editing ? "Perbarui Data" : "Tambah Data"}
           </Button>
         </DialogFooter>
@@ -1048,11 +1063,21 @@ export default function PenerimaBantuanPage() {
   };
 
   const handleInitSampleData = async () => {
-    if (!pageActor || isPageActorFetching || !isAdminInitReady) {
+    if (!pageActor || isPageActorFetching) {
       toast.error(
         "Sistem sedang memuat, harap tunggu sebentar lalu coba lagi.",
       );
       return;
+    }
+
+    // Re-init access control for password admin sessions before every write
+    if (isPasswordAdmin && pageActor) {
+      const adminToken = getSecretParameter("caffeineAdminToken") || "";
+      try {
+        await pageActor._initializeAccessControlWithSecret(adminToken);
+      } catch (e) {
+        console.warn("re-init access control failed", e);
+      }
     }
 
     const principal = identity?.getPrincipal();
@@ -1139,21 +1164,21 @@ export default function PenerimaBantuanPage() {
                         isInitingData ||
                         isPageActorFetching ||
                         !pageActor ||
-                        !isAdminInitReady
+                        (isPasswordAdmin && !isAdminInitReady)
                       }
                       variant="outline"
                       className="border-white/30 bg-white/10 text-white hover:bg-white/20 gap-2 font-medium"
                     >
                       {isInitingData ||
                       isPageActorFetching ||
-                      !isAdminInitReady ? (
+                      (isPasswordAdmin && !isAdminInitReady) ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
                         <Database className="w-4 h-4" />
                       )}
                       {isInitingData
                         ? "Memuat..."
-                        : !isAdminInitReady
+                        : isPasswordAdmin && !isAdminInitReady
                           ? "Menginisialisasi..."
                           : "Init Data Sampel"}
                     </Button>

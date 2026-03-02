@@ -11,6 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import { motion } from "motion/react";
+import { useMemo } from "react";
 import {
   Bar,
   BarChart,
@@ -24,21 +25,56 @@ import {
   YAxis,
 } from "recharts";
 import {
+  useGetAllBantuanPenerima,
   useGetAllReports,
-  useGetRecipientsByAidType,
-  useGetRecipientsByDistrict,
-  useGetRecipientsByStatus,
-  useGetTotalRecipients,
 } from "../hooks/useQueries";
-import { formatNumber, getAidTypeLabel, getStatusLabel } from "../utils/format";
+import { formatNumber } from "../utils/format";
 
 const STATUS_COLORS: Record<string, string> = {
-  menunggu: "#d97706",
+  baru: "#94a3b8",
   diproses: "#2563eb",
-  didistribusikan: "#059669",
+  ditindaklanjuti: "#059669",
 };
 
-const AID_TYPE_COLORS = ["#1e6aa6", "#0ea5e9", "#f59e0b", "#10b981", "#8b5cf6"];
+const AID_TYPE_COLORS = [
+  "#1e6aa6",
+  "#0ea5e9",
+  "#f59e0b",
+  "#10b981",
+  "#8b5cf6",
+  "#ef4444",
+  "#f97316",
+  "#14b8a6",
+];
+
+function classifyAidType(keperluan: string): string {
+  const k = keperluan.toLowerCase();
+  if (/hunian|rumah|tempat tinggal|huntara|huntap/.test(k)) return "Hunian";
+  if (/pangan|sembako|makanan|logistik|beras/.test(k)) return "Pangan/Logistik";
+  if (/kesehatan|obat|medis/.test(k)) return "Kesehatan";
+  if (/pakaian|sandang/.test(k)) return "Sandang";
+  if (/modal|usaha|tani|bibit|alat/.test(k)) return "Ekonomi/Usaha";
+  if (/sanitasi|air bersih|mck/.test(k)) return "Sanitasi";
+  if (/renovasi|rehab|perbaikan|atap/.test(k)) return "Rehabilitasi Rumah";
+  return "Lainnya";
+}
+
+function extractKabupaten(alamat: string): string {
+  // "RT 02/RW 03, Desa X, Kec. Y, Kab. Z"
+  // Try to get the last meaningful part
+  const parts = alamat
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (parts.length === 0) return "Tidak Diketahui";
+  // Look for a part that starts with "Kab." or "Kabupaten" or "Kota"
+  const kabPart = parts.find((p) => /^(kab\.|kabupaten|kota)\s/i.test(p));
+  if (kabPart) {
+    return kabPart.replace(/^(kab\.|kabupaten|kota)\s+/i, "Kab. ").trim();
+  }
+  // Fallback: last part
+  return parts[parts.length - 1];
+}
 
 function StatCard({
   icon: Icon,
@@ -89,38 +125,75 @@ function StatCard({
 }
 
 export default function BerandaPage() {
-  const { data: totalRecipients, isLoading: loadingTotal } =
-    useGetTotalRecipients();
-  const { data: byDistrict, isLoading: loadingDistrict } =
-    useGetRecipientsByDistrict();
-  const { data: byAidType, isLoading: loadingAidType } =
-    useGetRecipientsByAidType();
-  const { data: byStatus, isLoading: loadingStatus } =
-    useGetRecipientsByStatus();
+  const { data: allData, isLoading } = useGetAllBantuanPenerima();
   const { data: allReports } = useGetAllReports();
 
-  const districtData = (byDistrict ?? [])
-    .map(([name, count]) => ({
-      name: name.length > 16 ? `${name.slice(0, 14)}...` : name,
-      penerima: Number(count),
-    }))
-    .sort((a, b) => b.penerima - a.penerima)
-    .slice(0, 8);
+  // ── Penerima per Kabupaten ───────────────────────────────────────────────────
+  const districtData = useMemo(() => {
+    if (!allData || allData.length === 0) return [];
+    const freq: Record<string, number> = {};
+    for (const item of allData) {
+      const kab = extractKabupaten(item.alamat);
+      freq[kab] = (freq[kab] ?? 0) + 1;
+    }
+    return Object.entries(freq)
+      .map(([name, penerima]) => ({
+        name: name.length > 16 ? `${name.slice(0, 14)}…` : name,
+        penerima,
+      }))
+      .sort((a, b) => b.penerima - a.penerima)
+      .slice(0, 8);
+  }, [allData]);
 
-  const aidTypeData = (byAidType ?? []).map(([name, count], i) => ({
-    name: getAidTypeLabel(name),
-    value: Number(count),
-    color: AID_TYPE_COLORS[i % AID_TYPE_COLORS.length],
-  }));
+  // ── Penerima per Jenis Bantuan ───────────────────────────────────────────────
+  const aidTypeData = useMemo(() => {
+    if (!allData || allData.length === 0) return [];
+    const freq: Record<string, number> = {};
+    for (const item of allData) {
+      const cat = classifyAidType(item.keperluanBantuan);
+      freq[cat] = (freq[cat] ?? 0) + 1;
+    }
+    return Object.entries(freq).map(([name, value], i) => ({
+      name,
+      value,
+      color: AID_TYPE_COLORS[i % AID_TYPE_COLORS.length],
+    }));
+  }, [allData]);
 
-  const statusData = (byStatus ?? []).map(([name, count]) => ({
-    name: getStatusLabel(name),
-    value: Number(count),
-    color: STATUS_COLORS[name] ?? "#94a3b8",
-  }));
+  // ── Status Distribusi ────────────────────────────────────────────────────────
+  const statusData = useMemo(() => {
+    if (!allData || allData.length === 0) return [];
+    const freq: Record<string, number> = {};
+    for (const item of allData) {
+      const s = item.validasiStatus;
+      freq[s] = (freq[s] ?? 0) + 1;
+    }
+    const labelMap: Record<string, string> = {
+      baru: "Baru",
+      diproses: "Diproses",
+      ditindaklanjuti: "Ditindaklanjuti",
+    };
+    return Object.entries(freq).map(([key, value]) => ({
+      name: labelMap[key] ?? key,
+      value,
+      color: STATUS_COLORS[key] ?? "#94a3b8",
+    }));
+  }, [allData]);
 
+  // ── Stat values ──────────────────────────────────────────────────────────────
+  const totalPenerima = allData?.length ?? 0;
+  const uniqueDistricts = useMemo(() => {
+    if (!allData || allData.length === 0) return 0;
+    const set = new Set(allData.map((item) => extractKabupaten(item.alamat)));
+    return set.size;
+  }, [allData]);
   const totalReportsCount = allReports?.length ?? 0;
-  const uniqueDistricts = byDistrict?.length ?? 0;
+  const ditindaklanjutiCount = useMemo(
+    () =>
+      allData?.filter((item) => item.validasiStatus === "ditindaklanjuti")
+        .length ?? 0,
+    [allData],
+  );
 
   return (
     <div className="section-pattern">
@@ -189,7 +262,7 @@ export default function BerandaPage() {
       <div className="container mx-auto px-4 py-10">
         {/* Stat Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
-          {loadingTotal ? (
+          {isLoading ? (
             ["a", "b", "c", "d"].map((k) => (
               <Skeleton key={k} className="h-28 rounded-xl" />
             ))
@@ -198,7 +271,7 @@ export default function BerandaPage() {
               <StatCard
                 icon={Users}
                 label="Total Penerima Bantuan"
-                value={formatNumber(totalRecipients ?? BigInt(0))}
+                value={formatNumber(totalPenerima)}
                 subtitle="Terdaftar dalam sistem"
                 color="#1e6aa6"
                 delay={0.1}
@@ -221,11 +294,8 @@ export default function BerandaPage() {
               />
               <StatCard
                 icon={TrendingUp}
-                label="Sudah Didistribusikan"
-                value={
-                  statusData.find((s) => s.name === "Didistribusikan")?.value ??
-                  0
-                }
+                label="Sudah Ditindaklanjuti"
+                value={ditindaklanjutiCount}
                 subtitle="Dari total penerima"
                 color="#059669"
                 delay={0.4}
@@ -254,7 +324,7 @@ export default function BerandaPage() {
               </div>
               <MapPin className="w-5 h-5 text-muted-foreground" />
             </div>
-            {loadingDistrict ? (
+            {isLoading ? (
               <Skeleton className="h-64" />
             ) : (
               <ResponsiveContainer width="100%" height={260}>
@@ -305,7 +375,7 @@ export default function BerandaPage() {
               </div>
               <Package className="w-5 h-5 text-muted-foreground" />
             </div>
-            {loadingAidType ? (
+            {isLoading ? (
               <Skeleton className="h-64" />
             ) : (
               <ResponsiveContainer width="100%" height={260}>
@@ -361,7 +431,7 @@ export default function BerandaPage() {
             </div>
             <HomeIcon className="w-5 h-5 text-muted-foreground" />
           </div>
-          {loadingStatus ? (
+          {isLoading ? (
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
                 <Skeleton key={i} className="h-12 rounded-lg" />

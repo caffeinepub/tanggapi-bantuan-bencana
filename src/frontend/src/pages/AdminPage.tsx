@@ -1422,11 +1422,13 @@ function UsersTab() {
         user: principalObj,
         role: confirmUser.targetRole,
       });
-      toast.success(
+      const roleLabel =
         confirmUser.targetRole === UserRole.admin
-          ? "Pengguna berhasil dijadikan admin"
-          : "Role pengguna berhasil diubah menjadi user",
-      );
+          ? "admin"
+          : confirmUser.targetRole === UserRole.user
+            ? "user"
+            : "guest";
+      toast.success(`Role pengguna berhasil diubah menjadi ${roleLabel}`);
     } catch {
       toast.error("Gagal mengubah role pengguna");
     } finally {
@@ -1526,28 +1528,12 @@ function UsersTab() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center justify-end gap-2">
-                          {u.role === "user" && (
+                        <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                          {/* Guest: can be promoted to User */}
+                          {u.role === "guest" && (
                             <Button
                               size="sm"
-                              className="bg-primary text-white gap-1.5 h-8"
-                              onClick={() =>
-                                setConfirmUser({
-                                  principal: principalStr,
-                                  currentRole: u.role,
-                                  targetRole: UserRole.admin,
-                                })
-                              }
-                            >
-                              <ShieldCheck className="w-3.5 h-3.5" />
-                              Jadikan Admin
-                            </Button>
-                          )}
-                          {u.role === "admin" && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="border-orange-300 text-orange-600 hover:bg-orange-50 gap-1.5 h-8"
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 h-8"
                               onClick={() =>
                                 setConfirmUser({
                                   principal: principalStr,
@@ -1556,9 +1542,78 @@ function UsersTab() {
                                 })
                               }
                             >
-                              <ShieldMinus className="w-3.5 h-3.5" />
-                              Turunkan ke User
+                              <ShieldCheck className="w-3.5 h-3.5" />
+                              Jadikan User
                             </Button>
+                          )}
+                          {/* User: promote to admin or reset to guest */}
+                          {u.role === "user" && (
+                            <>
+                              <Button
+                                size="sm"
+                                className="bg-primary text-white gap-1.5 h-8"
+                                onClick={() =>
+                                  setConfirmUser({
+                                    principal: principalStr,
+                                    currentRole: u.role,
+                                    targetRole: UserRole.admin,
+                                  })
+                                }
+                              >
+                                <ShieldCheck className="w-3.5 h-3.5" />
+                                Jadikan Admin
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-red-300 text-red-600 hover:bg-red-50 gap-1.5 h-8"
+                                onClick={() =>
+                                  setConfirmUser({
+                                    principal: principalStr,
+                                    currentRole: u.role,
+                                    targetRole: UserRole.guest,
+                                  })
+                                }
+                              >
+                                <ShieldMinus className="w-3.5 h-3.5" />
+                                Reset ke Guest
+                              </Button>
+                            </>
+                          )}
+                          {/* Admin: demote to user or reset to guest */}
+                          {u.role === "admin" && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-orange-300 text-orange-600 hover:bg-orange-50 gap-1.5 h-8"
+                                onClick={() =>
+                                  setConfirmUser({
+                                    principal: principalStr,
+                                    currentRole: u.role,
+                                    targetRole: UserRole.user,
+                                  })
+                                }
+                              >
+                                <ShieldMinus className="w-3.5 h-3.5" />
+                                Turunkan ke User
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-red-300 text-red-600 hover:bg-red-50 gap-1.5 h-8"
+                                onClick={() =>
+                                  setConfirmUser({
+                                    principal: principalStr,
+                                    currentRole: u.role,
+                                    targetRole: UserRole.guest,
+                                  })
+                                }
+                              >
+                                <ShieldMinus className="w-3.5 h-3.5" />
+                                Reset ke Guest
+                              </Button>
+                            </>
                           )}
                         </div>
                       </TableCell>
@@ -1612,7 +1667,9 @@ function UsersTab() {
               className={
                 confirmUser?.targetRole === UserRole.admin
                   ? "bg-primary text-white hover:bg-primary/90"
-                  : "bg-orange-500 text-white hover:bg-orange-600"
+                  : confirmUser?.targetRole === UserRole.guest
+                    ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    : "bg-orange-500 text-white hover:bg-orange-600"
               }
             >
               {assignRole.isPending ? (

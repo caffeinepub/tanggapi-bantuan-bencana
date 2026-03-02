@@ -11,13 +11,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   Dialog,
   DialogContent,
   DialogFooter,
@@ -52,12 +45,11 @@ import {
   ClipboardCheck,
   Clock,
   ExternalLink,
-  Eye,
-  EyeOff,
   HandHeart,
   KeyRound,
   Link as LinkIcon,
   Loader2,
+  LogIn,
   LogOut,
   MessageSquare,
   Pencil,
@@ -86,6 +78,7 @@ import {
   DistributionStatusBadge,
   ReportStatusBadge,
 } from "../components/StatusBadge";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useAddAidRecipient,
   useAddFooterLink,
@@ -112,11 +105,6 @@ import {
   useUpdateReportStatus,
 } from "../hooks/useQueries";
 import { formatCurrency, formatDateId, newBigIntId } from "../utils/format";
-
-// ─── Auth constant ────────────────────────────────────────────────────────────
-
-const ADMIN_PASSWORD = "rtik2024";
-const SESSION_KEY = "admin_panel_auth";
 
 // ─── Empty form defaults ──────────────────────────────────────────────────────
 
@@ -1431,11 +1419,13 @@ function UsersTab() {
         user: principalObj,
         role: confirmUser.targetRole,
       });
-      toast.success(
+      const roleLabel =
         confirmUser.targetRole === UserRole.admin
-          ? "Pengguna berhasil dijadikan admin"
-          : "Role pengguna berhasil diubah menjadi user",
-      );
+          ? "admin"
+          : confirmUser.targetRole === UserRole.user
+            ? "user"
+            : "guest";
+      toast.success(`Role pengguna berhasil diubah menjadi ${roleLabel}`);
     } catch {
       toast.error("Gagal mengubah role pengguna");
     } finally {
@@ -1535,28 +1525,12 @@ function UsersTab() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center justify-end gap-2">
-                          {u.role === "user" && (
+                        <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                          {/* Guest: can be promoted to User */}
+                          {u.role === "guest" && (
                             <Button
                               size="sm"
-                              className="bg-primary text-white gap-1.5 h-8"
-                              onClick={() =>
-                                setConfirmUser({
-                                  principal: principalStr,
-                                  currentRole: u.role,
-                                  targetRole: UserRole.admin,
-                                })
-                              }
-                            >
-                              <ShieldCheck className="w-3.5 h-3.5" />
-                              Jadikan Admin
-                            </Button>
-                          )}
-                          {u.role === "admin" && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="border-orange-300 text-orange-600 hover:bg-orange-50 gap-1.5 h-8"
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 h-8"
                               onClick={() =>
                                 setConfirmUser({
                                   principal: principalStr,
@@ -1565,9 +1539,78 @@ function UsersTab() {
                                 })
                               }
                             >
-                              <ShieldMinus className="w-3.5 h-3.5" />
-                              Turunkan ke User
+                              <ShieldCheck className="w-3.5 h-3.5" />
+                              Jadikan User
                             </Button>
+                          )}
+                          {/* User: promote to admin or reset to guest */}
+                          {u.role === "user" && (
+                            <>
+                              <Button
+                                size="sm"
+                                className="bg-primary text-white gap-1.5 h-8"
+                                onClick={() =>
+                                  setConfirmUser({
+                                    principal: principalStr,
+                                    currentRole: u.role,
+                                    targetRole: UserRole.admin,
+                                  })
+                                }
+                              >
+                                <ShieldCheck className="w-3.5 h-3.5" />
+                                Jadikan Admin
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-red-300 text-red-600 hover:bg-red-50 gap-1.5 h-8"
+                                onClick={() =>
+                                  setConfirmUser({
+                                    principal: principalStr,
+                                    currentRole: u.role,
+                                    targetRole: UserRole.guest,
+                                  })
+                                }
+                              >
+                                <ShieldMinus className="w-3.5 h-3.5" />
+                                Reset ke Guest
+                              </Button>
+                            </>
+                          )}
+                          {/* Admin: demote to user or reset to guest */}
+                          {u.role === "admin" && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-orange-300 text-orange-600 hover:bg-orange-50 gap-1.5 h-8"
+                                onClick={() =>
+                                  setConfirmUser({
+                                    principal: principalStr,
+                                    currentRole: u.role,
+                                    targetRole: UserRole.user,
+                                  })
+                                }
+                              >
+                                <ShieldMinus className="w-3.5 h-3.5" />
+                                Turunkan ke User
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-red-300 text-red-600 hover:bg-red-50 gap-1.5 h-8"
+                                onClick={() =>
+                                  setConfirmUser({
+                                    principal: principalStr,
+                                    currentRole: u.role,
+                                    targetRole: UserRole.guest,
+                                  })
+                                }
+                              >
+                                <ShieldMinus className="w-3.5 h-3.5" />
+                                Reset ke Guest
+                              </Button>
+                            </>
                           )}
                         </div>
                       </TableCell>
@@ -1621,7 +1664,9 @@ function UsersTab() {
               className={
                 confirmUser?.targetRole === UserRole.admin
                   ? "bg-primary text-white hover:bg-primary/90"
-                  : "bg-orange-500 text-white hover:bg-orange-600"
+                  : confirmUser?.targetRole === UserRole.guest
+                    ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    : "bg-orange-500 text-white hover:bg-orange-600"
               }
             >
               {assignRole.isPending ? (
@@ -2136,35 +2181,11 @@ function BantuanPenerimaSummaryTab() {
   );
 }
 
-// ─── Login Form ───────────────────────────────────────────────────────────────
+// ─── Login Prompt ─────────────────────────────────────────────────────────────
 
-interface LoginFormProps {
-  onSuccess: () => void;
-}
-
-function LoginForm({ onSuccess }: LoginFormProps) {
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setIsLoading(true);
-
-    // Simulate slight delay for UX
-    setTimeout(() => {
-      if (password === ADMIN_PASSWORD) {
-        sessionStorage.setItem(SESSION_KEY, "true");
-        onSuccess();
-      } else {
-        setError("Kata sandi salah");
-        setPassword("");
-      }
-      setIsLoading(false);
-    }, 400);
-  };
+function LoginPrompt() {
+  const { login, loginStatus } = useInternetIdentity();
+  const isLoggingIn = loginStatus === "logging-in";
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background section-pattern p-4">
@@ -2174,93 +2195,41 @@ function LoginForm({ onSuccess }: LoginFormProps) {
         transition={{ duration: 0.4, ease: "easeOut" }}
         className="w-full max-w-sm"
       >
-        <Card className="shadow-card-hover border-border">
-          <CardHeader className="text-center pb-2">
-            {/* Logo */}
-            <div className="flex justify-center mb-4">
-              <div className="w-20 h-20 rounded-2xl overflow-hidden bg-white shadow-md p-1 border border-border">
-                <img
-                  src="/assets/uploads/v-AbSTb_400x400-1--1.jpg"
-                  alt="Relawan TIK Indonesia Logo"
-                  className="w-full h-full object-contain"
-                />
-              </div>
+        <div className="bg-white rounded-2xl shadow-card-hover border border-border p-8 text-center">
+          {/* Logo */}
+          <div className="flex justify-center mb-6">
+            <div className="w-20 h-20 rounded-2xl overflow-hidden bg-white shadow-md p-1 border border-border">
+              <img
+                src="/assets/uploads/v-AbSTb_400x400-1--1.jpg"
+                alt="Relawan TIK Indonesia Logo"
+                className="w-full h-full object-contain"
+              />
             </div>
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <div className="w-8 h-8 bg-amber-500/10 rounded-lg flex items-center justify-center">
-                <KeyRound className="w-4 h-4 text-amber-600" />
-              </div>
-              <CardTitle className="font-display text-2xl">
-                Panel Admin
-              </CardTitle>
+          </div>
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <div className="w-8 h-8 bg-amber-500/10 rounded-lg flex items-center justify-center">
+              <KeyRound className="w-4 h-4 text-amber-600" />
             </div>
-            <CardDescription className="text-sm">
-              Masukkan kata sandi untuk mengakses panel
-            </CardDescription>
-          </CardHeader>
-
-          <CardContent className="pt-4">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="admin-password">Kata Sandi</Label>
-                <div className="relative">
-                  <Input
-                    id="admin-password"
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      setError("");
-                    }}
-                    placeholder="Masukkan kata sandi"
-                    className={`pr-10 ${error ? "border-destructive focus-visible:ring-destructive" : ""}`}
-                    autoFocus
-                    autoComplete="current-password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    tabIndex={-1}
-                    aria-label={
-                      showPassword
-                        ? "Sembunyikan kata sandi"
-                        : "Tampilkan kata sandi"
-                    }
-                  >
-                    {showPassword ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
-                  </button>
-                </div>
-                {error && (
-                  <motion.p
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="text-xs text-destructive font-medium"
-                  >
-                    {error}
-                  </motion.p>
-                )}
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full bg-primary text-white gap-2"
-                disabled={isLoading || !password}
-              >
-                {isLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <KeyRound className="w-4 h-4" />
-                )}
-                {isLoading ? "Memeriksa..." : "Masuk"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+            <h2 className="font-display text-2xl font-bold">Panel Admin</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-6">
+            Login dengan Internet Identity untuk mengakses panel pengelolaan
+          </p>
+          <Button
+            onClick={login}
+            disabled={isLoggingIn}
+            className="w-full bg-primary text-white gap-2"
+          >
+            {isLoggingIn ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <LogIn className="w-4 h-4" />
+            )}
+            {isLoggingIn
+              ? "Menghubungkan..."
+              : "Masuk dengan Internet Identity"}
+          </Button>
+        </div>
       </motion.div>
     </div>
   );
@@ -2268,11 +2237,8 @@ function LoginForm({ onSuccess }: LoginFormProps) {
 
 // ─── Admin Panel Content ──────────────────────────────────────────────────────
 
-interface AdminPanelContentProps {
-  onLogout: () => void;
-}
-
-function AdminPanelContent({ onLogout }: AdminPanelContentProps) {
+function AdminPanelContent() {
+  const { clear } = useInternetIdentity();
   const initSampleData = useInitializeSampleData();
 
   const handleInitSampleData = async () => {
@@ -2282,11 +2248,6 @@ function AdminPanelContent({ onLogout }: AdminPanelContentProps) {
     } catch {
       toast.error("Gagal menginisialisasi data sampel");
     }
-  };
-
-  const handleLogout = () => {
-    sessionStorage.removeItem(SESSION_KEY);
-    onLogout();
   };
 
   return (
@@ -2327,7 +2288,7 @@ function AdminPanelContent({ onLogout }: AdminPanelContentProps) {
                 <span className="hidden sm:inline">Init Data Sampel</span>
               </Button>
               <Button
-                onClick={handleLogout}
+                onClick={clear}
                 variant="outline"
                 className="border-white/20 text-white bg-white/10 hover:bg-red-500/20 hover:border-red-400/40 hover:text-red-300 gap-2 transition-colors"
               >
@@ -2413,13 +2374,22 @@ function AdminPanelContent({ onLogout }: AdminPanelContentProps) {
 // ─── Main Page Component ──────────────────────────────────────────────────────
 
 export default function AdminPanelPasswordPage() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return sessionStorage.getItem(SESSION_KEY) === "true";
-  });
+  const { identity, isInitializing } = useInternetIdentity();
 
-  if (!isAuthenticated) {
-    return <LoginForm onSuccess={() => setIsAuthenticated(true)} />;
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center section-pattern">
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <Loader2 className="w-6 h-6 animate-spin" />
+          <span className="text-sm font-medium">Memuat...</span>
+        </div>
+      </div>
+    );
   }
 
-  return <AdminPanelContent onLogout={() => setIsAuthenticated(false)} />;
+  if (!identity) {
+    return <LoginPrompt />;
+  }
+
+  return <AdminPanelContent />;
 }
